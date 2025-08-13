@@ -41,8 +41,8 @@
 | LabName        | StartTime  | EndTime    |
 | -------------- | ---------- | ---------- |
 | **Data Lab**   | 2025-07-31 | 2025-08-04 |
-| **Bomb Lab**   | 2025-08-04 | 2025-08-10 |
-| **Attack Lab** |            |            |
+| **Bomb Lab**   | 2025-08-06 | 2025-08-10 |
+| **Attack Lab** | 2025-08-13 |            |
 | **Shell Lab**  |            |            |
 | **Malloc Lab** |            |            |
 | **Proxy Lab**  |            |            |
