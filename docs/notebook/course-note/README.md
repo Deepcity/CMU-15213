@@ -17,6 +17,6 @@ CMU Website: [15-213： 计算机系统导论 --- 15-213: Introduction to Comput
 2. [02-03-bits-ints](./02-03-bits-ints.md)
 3. [04-float](./04-float.md)
 4. [DataLab](../lab-note/datalog.md)
-5. [05-machine-basics](./05-machine-basics.md)
+5. [05-09-machine](./05-09-machine.md)
 
 ## REF
