@@ -8,7 +8,7 @@
 
 “Computer Systems: A Programmer's Perspective”（计算机系统：程序员的视角），是卡内基梅隆大学（Carnegie Mellon University, CMU）开设的一门著名本科计算机科学课程，通常也被称为“CS:APP”课程（取自其配套教材《Computer Systems: A Programmer's Perspective》的缩写）。
 
-该REPO为个人学习REPO，依据CMU课程，Lab相关要求，请勿将答案直接填入CMU作业中，因擅自使用这份答案的后果个人自负，与本项目库无关。
+该REPO为个人学习REPO，依据CMU课程，Lab相关要求，请勿将答案直接填入CMU作业中，因擅自使用这份答案的后果个人自负，与本项目库无关，详细请参见[学术诚信 - 大学政策 - Carnegie Mellon University --- Academic Integrity - University Policies - Carnegie Mellon University](https://www.cmu.edu/policies/student-and-student-life/academic-integrity.html)与[学术诚信 - 卡内基梅隆大学工程学院 --- Academic integrity - College of Engineering at Carnegie Mellon University](https://engineering.cmu.edu/education/academic-policies/academic-integrity.html)。
 
 该REPO含有AI-generate，Blog以及他人帮助，并非完全独立完成，如有侵权，请邮件联系我。
 
@@ -72,3 +72,5 @@ CMU-15213
 ```
 
 ## REF
+1. [学术诚信 - 卡内基梅隆大学工程学院 --- Academic integrity - College of Engineering at Carnegie Mellon University](https://engineering.cmu.edu/education/academic-policies/academic-integrity.html)
+2. [学术诚信 - 大学政策 - Carnegie Mellon University --- Academic Integrity - University Policies - Carnegie Mellon University](https://www.cmu.edu/policies/student-and-student-life/academic-integrity.html)
