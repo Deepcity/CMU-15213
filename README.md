@@ -51,26 +51,29 @@
 
 ```
 CMU-15213
-├─ Attack-Lab
-├─ Bomb-Lab
-├─ Datalab-Lab
-├─ README.md
-├─ backup
-│  ├─ archlab-handout.tar
-│  ├─ attacklab-handout.tar
-│  ├─ bomb.tar
-│  ├─ bomblab-handout
-│  ├─ buflab32-handout.tar
-│  ├─ cachelab-handout.tar
-│  ├─ datalab-handout.tar
-│  ├─ malloclab-handout.tar
-│  ├─ perflab-handout.tar
-│  ├─ proxylab-handout.tar
-│  └─ shlab-handout.tar
-└─ notebook
-   └─ bomblog.md
+├── backup
+├── docs
+│   └── notebook
+│       ├── course-note
+│       └── lab-note
+├── README.md
+├── resources
+│   ├── Attack-Lab
+│   ├── Bomb-Lab
+│   ├── books
+│   ├── code-all.tar
+│   ├── courses
+│   │   └── 2015fall
+│   │       ├── ppt
+│   │       └── README.md
+│   └── Data-Lab
+└── src
+    ├── Attack-Lab
+    ├── Bomb-Lab
+    └── Datalab-Lab
 ```
 
 ## REF
 1. [学术诚信 - 卡内基梅隆大学工程学院 --- Academic integrity - College of Engineering at Carnegie Mellon University](https://engineering.cmu.edu/education/academic-policies/academic-integrity.html)
 2. [学术诚信 - 大学政策 - Carnegie Mellon University --- Academic Integrity - University Policies - Carnegie Mellon University](https://www.cmu.edu/policies/student-and-student-life/academic-integrity.html)
+3. [15-213：计算机系统概论/2015年秋季课程 --- 15-213: Introduction to Computer Systems / Schedule Fall 2015](https://www.cs.cmu.edu/afs/cs/academic/class/15213-f15/www/schedule.html)
