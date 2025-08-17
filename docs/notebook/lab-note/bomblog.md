@@ -831,6 +831,7 @@ sar %reg            # /2
 ## gdb ref
 
 ```shell
+info break          # 列出所有断点
 break main          # 在 main 函数设断点
 break phase_1       # 在 phase_1 设断点
 break *0x401234     # 在指定地址设断点
@@ -919,6 +920,13 @@ record	#在run前调用
 reverse——stepi
 reverse-nexti
 reverse-continue	# 反向continue
+# cgdb 
+<esc> 切换焦点到assembler code
+i # 切换焦点到gdb
+<ctrl> + x, o 选择assember文件
+display # 监控特定变量
+undisplay <id> # 取消监控特定id
+<enter> # 重复执行上一步
 ```
 
 | 操作                 | 快捷键             |
