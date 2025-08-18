@@ -924,7 +924,7 @@ reverse-continue	# 反向continue
 <esc> 切换焦点到assembler code
 i # 切换焦点到gdb
 <ctrl> + x, o 选择assember文件
-display # 监控特定变量
+display # 监控特定变量(例如eflags)
 undisplay <id> # 取消监控特定id
 <enter> # 重复执行上一步
 ```

@@ -221,3 +221,7 @@ int end_farm()
 {
     return 1;
 }
+
+unsigned main(){
+
+}
