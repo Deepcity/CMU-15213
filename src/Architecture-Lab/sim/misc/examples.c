@@ -48,3 +48,7 @@ long copy_block(long *src, long *dest, long len)
     return result;
 }
 /* $end examples */
+
+void main(){
+    
+}

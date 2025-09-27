@@ -174,19 +174,19 @@ Changes to memory:
 		.quad 0
 
 main: irmovq ele1,%rdi
-	call sum_list
+	call rsum_list
 	ret
 
-# long sum_list(list_ptr ls)
+# long rsum_list(list_ptr ls)
 # start in %rdi, end in $0
 sum_list: irmovq $0,%rax 		# val=0
 	jmp test 									# Goto test
-loop:  mrmovq (%rdi), %rsi
-  addq %rsi, %rax
-  mrmovq 8(%rdi), %rdi
+loop:  mrmovq (%rdi), %rsi 	# Get ls->val
+  addq %rsi, %rax						# val += ls->val
+  mrmovq 8(%rdi), %rdi			# ls = ls->next
 test: 
-	andq %rdi, %rdi
-	jne 	loop						# Stop when next=0
+	andq %rdi, %rdi						# Set CC
+	jne 	loop								# Stop when next=0
 	ret
 	
 # Stack starts here and grows to lower addresses
@@ -194,6 +194,9 @@ test:
 stack:
 
 ```
+需要注意的是
+- 这里的数据存储的order，可见地址位应该是存放在高32位的，这也就是说8(%rdi)才是next
+- 这里的8(%rdi)也可以改成 0x8(%rdi)
  
 当编译时可能会遇到报错，与gcc的编译报错类似，会提示在哪一行出现的错误和可能的原因
 ```shell
@@ -204,8 +207,217 @@ Error on line 37: Missing end-of-line on final line
 
 Line 37, Byte 0x0200:   .pos 0x200
 ```
+### rsum.ys 反向遍历求和链表元素
+
+```assembly
+# Execution begins at address 0
+	.pos 0 
+	irmovq stack,%rsp
+	call main
+	halt
+
+# Sample linked list
+	.align 8
+	ele1:
+		.quad 0x00a
+		.quad ele2
+	ele2:
+		.quad 0x0b0
+		.quad ele3
+	ele3:
+		.quad 0xc00
+		.quad 0
+
+main: irmovq ele1,%rdi
+	call rsum_list
+	ret
+
+# long rsum_list(list_ptr ls)
+# start in %rdi, end in $0
+rsum_list: andq %rdi,%rdi	# Set CC if(ls)
+	je	end									# End recursion
+	mrmovq (%rdi),%rsi      # rest=ls->val
+	pushq	%rsi							# Storage rest
+	mrmovq 8(%rdi),%rdi			# ls = ls->next
+	call rsum_list					# call rsum_list
+	popq	%rsi							# Get rest
+	addq %rsi,%rax					# return val + rest
+	ret
+end: xorq %rax,%rax				# return 0
+	ret
+	
+# Stack starts here and grows to lower addresses
+	.pos 0x200
+stack:
+
+```
+
+需要注意的点如下：
+1. 这里的递归调用与c中的递归调用存在一些逻辑上的区别,在c中ls这个参数在一个rsum_list调用中式不会被改变的，而在这个程序中，则在每个rsum_list中都被改变了
+2. y86的语法，如果希望使用`D(r)`的语法只能通过`mrmovX`或`rmmovX`。
+
+更符合原著的方式如下
+```assembly
+# Execution begins at address 0
+	.pos 0 
+	irmovq stack,%rsp
+	call main
+	halt
+
+# Sample linked list
+	.align 8
+	ele1:
+		.quad 0x00a
+		.quad ele2
+	ele2:
+		.quad 0x0b0
+		.quad ele3
+	ele3:
+		.quad 0xc00
+		.quad 0
+
+main: irmovq ele1,%rdi
+	call rsum_list
+	ret
+
+# long rsum_list(list_ptr ls)
+# start in %rdi, end in $0
+rsum_list: andq %rdi,%rdi	# Set CC if(ls)
+	je	end									# End recursion
+	# mrmovq (%rdi),%rsi      # rest=ls->val
+	# pushq	%rsi							# Storage rest
+	pushq	%rdi
+	mrmovq 8(%rdi),%rdi			# ls = ls->next
+	call rsum_list					# call rsum_list
+	# popq	%rsi							# Get rest
+	popq %rdi
+	# addq %rsi,%rax					# return val + rest
+	mrmovq	(%rdi),%rsi
+	addq	%rsi,%rax
+	ret
+end: xorq %rax,%rax				# return 0
+	ret
+	
+# Stack starts here and grows to lower addresses
+	.pos 0x200
+stack:
+
+```
+
+可以参考一下[REF](#ref) 2中的代码
+
+看一下下面这一份的输出，正确的
+```shell
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/y86-code$ ../misc/yis ./rsum.yo
+Stopped in 37 steps at PC = 0x13.  Status 'HLT', CC Z=0 S=0 O=0
+Changes to registers:
+%rax:   0x0000000000000000      0x0000000000000cba
+%rsp:   0x0000000000000000      0x0000000000000200
+%rsi:   0x0000000000000000      0x000000000000000a
+%rdi:   0x0000000000000000      0x0000000000000018
+
+Changes to memory:
+0x01c0: 0x0000000000000000      0x000000000000007c
+0x01c8: 0x0000000000000000      0x0000000000000038
+0x01d0: 0x0000000000000000      0x000000000000007c
+0x01d8: 0x0000000000000000      0x0000000000000028
+0x01e0: 0x0000000000000000      0x000000000000007c
+0x01e8: 0x0000000000000000      0x0000000000000018
+0x01f0: 0x0000000000000000      0x000000000000005b
+0x01f8: 0x0000000000000000      0x0000000000000013
+```
+
+### copy.ys 复制long数组，并返回所有数值的异或和
+
+
+直接给出正确的代码与输出
+```assembly
+# Execution begins at address 0
+	.pos 0 
+	irmovq stack,%rsp
+	call main
+	halt
+
+.align 8
+# Source block
+src:
+	.quad 0x00a
+	.quad 0x0b0
+	.quad 0xc00
+# Destination block
+dest:
+	.quad 0x111
+	.quad 0x222
+	.quad 0x333
+
+main: irmovq src,%rdi
+	irmovq dest,%rsi
+	irmovq $3,%rdx
+	call copy_block
+	ret
+
+# long copy_block(long* src, long dest, long len)
+# start in rdi with length rdx
+copy_block: irmovq $0,%rax	# result = 0
+	andq %rdx,%rdx						# Set CC
+	irmovq $1,%rcx 						# Constant 1
+	irmovq $8,%rbp						# Constant 8
+	jmp 	test
+loop:	mrmovq (%rdi),%r8 		# val = *src 
+	addq %rbp,%rdi 		# src++
+	rmmovq %r8,(%rsi) 				# dest = val
+	addq %rbp,%rsi 		# dest++
+	xorq %r8,%rax 						# result ^= val
+	subq %rcx,%rdx 						# len--. Set CC
+test: jne	loop							# Stop when len == 0
+	ret
+
+# Stack starts here and grows to lower addresses
+.pos 0x200
+stack:
+
+```
+
+```shell
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/y86-code$ ../misc/yis ./copy.yo
+Stopped in 36 steps at PC = 0x13.  Status 'HLT', CC Z=1 S=0 O=0
+Changes to registers:
+%rax:   0x0000000000000000      0x0000000000000cba
+%rcx:   0x0000000000000000      0x0000000000000001
+%rsp:   0x0000000000000000      0x0000000000000200
+%rbp:   0x0000000000000000      0x0000000000000008
+%rsi:   0x0000000000000000      0x0000000000000048
+%rdi:   0x0000000000000000      0x0000000000000030
+%r8:    0x0000000000000000      0x0000000000000c00
+
+Changes to memory:
+0x0030: 0x0000000000000111      0x000000000000000a
+0x0038: 0x0000000000000222      0x00000000000000b0
+0x0040: 0x0000000000000333      0x0000000000000c00
+0x01f0: 0x0000000000000000      0x000000000000006f
+0x01f8: 0x0000000000000000      0x0000000000000013
+```
+
+当我编写汇编代码时犯了一个错误，使用mrmovq 0x8(%rdi), %rdi代替了addq %rbp,%rdi（irmovq $8,%rbp）。但前者时取出0x8(%rdi)地址处的值将其放在rdi中，而后者则是正确的。
+
+如果用c来表述`ptr = ptr->next`是前者，而`ptr++`是后者
 
 ## Part B
+
+> You will be working in directory sim/seq in this part.
+> Your task in Part B is to extend the SEQ processor to support the iaddq, described in Homework problems 4.51 and 4.52. To add this instructions, you will modify the file seq-full.hcl, which implements the version of SEQ described in the CS:APP3e textbook. In addition, it contains declarations of some constants that you will need for your solution.
+
+这里需要我们完成`iaddq`指令，涉及“CS:APP”中的部分内容。在国内常规学校开设的课程中，多多少少会涉及到PC等寄存器和处理器框架，这里还是建议读一下“CS:APP”，如果只想了解lab如何完成，请往下看。
+
+1. 取址：根据PC的值读入指令字节。每一条指令长短不一，但都规范化为几个结构（在Y86中 RISA架构处理器）
+    - `icode`，`ifunction` 分别占1个字节，共两个字节，例如 0x30，code的含义是分类指令，例如`jmp`, `je`等。ifunction则是区分同一分类中的不同指令
+	- `rA`, `rB` 指明寄存器。寄存器的编号如下图所示
+	- 8字节常数数字`valC`。~~（这里是由于Y86,在CIRS（x86-64）中不是这样）~~
+	- 下一条指令的地址是`valP`
+
+![寄存器编码](https://s2.loli.net/2025/09/05/CQciPtuRYyqwxb4.png)
+![指令类别](https://s2.loli.net/2025/09/05/4oZQvaKGPj3RA6m.png)
+![指令字节码](https://s2.loli.net/2025/09/05/WUGHaL32rOwBeV5.png)
 
 ## Part C
 
