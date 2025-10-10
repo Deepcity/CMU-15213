@@ -841,8 +841,10 @@ void sim_log( const char *format, ... ) {
  **********************/
 
 /* Hack for SunOS */
-extern int matherr();
-int *tclDummyMathPtr = (int *) matherr;
+// 因为 tcl8.6,tk8.6在sunos上编译时会定义这个函数，而matherr在math.h中被声明为weak符号
+// 但在C17标准中，matherr已被弃用且不再推荐使用，因此这里注释掉相关代码以避免冲突
+// extern int matherr();
+// int *tclDummyMathPtr = (int *) matherr;
 
 static char tcl_msg[256];
 
