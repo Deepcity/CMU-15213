@@ -414,6 +414,8 @@ Changes to memory:
 
 ## Part B
 
+![sim](https://s2.loli.net/2025/10/11/1pZlFVSqyL3O4zg.png)
+
 > You will be working in directory sim/seq in this part.
 > Your task in Part B is to extend the SEQ processor to support the iaddq, described in Homework problems 4.51 and 4.52. To add this instructions, you will modify the file seq-full.hcl, which implements the version of SEQ described in the CS:APP3e textbook. In addition, it contains declarations of some constants that you will need for your solution.
 
@@ -537,33 +539,32 @@ SEQ的顺序硬件实现如下所示
 ```hcl
 # Determine instruction code
 word icode = [
-	imem_error: INOP;
-	1: imem_icode;		# Default: get from instruction memory
+ imem_error: INOP;
+ 1: imem_icode;  # Default: get from instruction memory
 ];
 
 # Determine instruction function
 word ifun = [
-	imem_error: FNONE;
-	1: imem_ifun;		# Default: get from instruction memory
+ imem_error: FNONE;
+ 1: imem_ifun;  # Default: get from instruction memory
 ];
 ```
 
 一个列表一样的结构分割了一些命令，典型的是icode中的INOP，在书中有提到1在hcl中是默认值。可以注意到imem_code, imem_ifun应是直接从指令内存中提取的变量，INOP由于是空指令不执行任何命令被放在了imem_error位置，而ifun则是FNONE类似一个空指令的表达。
 
-
 ```hcl
 bool instr_valid = icode in 
-	{ INOP, IHALT, IRRMOVQ, IIRMOVQ, IRMMOVQ, IMRMOVQ,
-	       IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ, IIADDQ };
+ { INOP, IHALT, IRRMOVQ, IIRMOVQ, IRMMOVQ, IMRMOVQ,
+        IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ, IIADDQ };
 
 # Does fetched instruction require a regid byte?
 bool need_regids =
-	icode in { IRRMOVQ, IOPQ, IPUSHQ, IPOPQ, 
-		     IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ };
+ icode in { IRRMOVQ, IOPQ, IPUSHQ, IPOPQ, 
+       IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ };
 
 # Does fetched instruction require a constant word?
 bool need_valC =
-	icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL, IIADDQ };
+ icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL, IIADDQ };
 
 ```
 
@@ -578,6 +579,7 @@ bool need_valC =
 ![test](https://s2.loli.net/2025/10/10/iVRMwxhl7O9Kvjg.png)
 
 在这里有两条指令可能由于年代原因出现错误，分别关于`tk`\\`tcl`, `gui forwarding`
+
 ```sh
 make VERSION=full
 ./sim -g ../y86-code/asumi.yo
@@ -666,6 +668,21 @@ Simulating with ../seq/ssim
   All 600 ISA Checks Succeed
 ```
 
+```sh
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/seq$ (cd ../ptest; make SIM=../seq/ssim TFLAGS=-i)
+./optest.pl -s ../seq/ssim -i
+Simulating with ../seq/ssim
+  All 58 ISA Checks Succeed
+./jtest.pl -s ../seq/ssim -i
+Simulating with ../seq/ssim
+  All 96 ISA Checks Succeed
+./ctest.pl -s ../seq/ssim -i
+Simulating with ../seq/ssim
+  All 22 ISA Checks Succeed
+./htest.pl -s ../seq/ssim -i
+Simulating with ../seq/ssim
+  All 756 ISA Checks Succeed
+```
 
 做到这里PartB也就结束了，接下来是比较困难的PartC
 
@@ -677,7 +694,1210 @@ Simulating with ../seq/ssim
 
 ## Part C
 
+**注意这部分的代码中`ncopy.c`文件中有一处错误，len应该在任何循环分支中都--，缩进是对的**
 
+这一部分需要在`sim/pipe`文件夹中做修改。
+
+整个任务描述比较复杂，面向结果的话，我们需要提升 `benchmark.pl` 测试的分数，并且同时保证 `correctness.pl` 的正确性。
+在benchmark中，分数计算以一个重要指标CPE计算，该值是`cycles per element` 指平均复制一个元素需要的时钟周期，例如对于N个元素需要N个始终周期的话，该值就是$C/N$，对于一次 63 element的复制操作花费了 897 个cycles，即CPE值为14.24，而该值对`Score`的折算需要用一个公式表示
+
+![score](https://s2.loli.net/2025/10/11/QYpdvCM4FJtAETZ.png)
+
+我们可以修改所有文件，除了注释的地方，尤其需要提高注意力的是`ncopy.ys`、`pipe-full.hcl`文件。==有关整体的`coding rules`建议看一看handout中的描述，网上blog大多都不全==。
+
+首先我们用
+
+```sh
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ (cd ../ptest; make SIM=../pipe/psim)
+./optest.pl -s ../pipe/psim
+Simulating with ../pipe/psim
+  All 49 ISA Checks Succeed
+./jtest.pl -s ../pipe/psim
+Simulating with ../pipe/psim
+  All 64 ISA Checks Succeed
+./ctest.pl -s ../pipe/psim
+Simulating with ../pipe/psim
+  All 22 ISA Checks Succeed
+./htest.pl -s ../pipe/psim
+Simulating with ../pipe/psim
+  All 600 ISA Checks Succeed
+```
+
+这个可以用于测试所有除`iaddq`以外的命令，这里是完全正确没有任何错误的，这和我们的预期是一致的，因为我们没有修改任何代码。
+
+首先我们需要在psim这一个模拟器中也加上`iaddq`指令，并使用
+
+```sh
+# 使用benchmark测试代码测试包括iaddq指令在内的所有指令
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ (cd ../ptest; make SIM=../pipe/psim TFLAGS=-i)
+./optest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+Test op-iaddq-256-rdx failed
+Test op-iaddq-32-rdx failed
+Test op-iaddq-4-rdx failed
+Test op-iaddq-256-rbx failed
+Test op-iaddq-32-rbx failed
+Test op-iaddq-4-rbx failed
+Test op-iaddq-256-rsp failed
+Test op-iaddq-32-rsp failed
+Test op-iaddq-4-rsp failed
+  9/58 ISA Checks Failed
+./jtest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+Test ji-jmp-32-32 failed
+Test ji-jmp-32-64 failed
+Test ji-jmp-64-32 failed
+Test ji-jmp-64-64 failed
+Test ji-jle-32-32 failed
+Test ji-jle-32-64 failed
+Test ji-jle-64-32 failed
+Test ji-jle-64-64 failed
+Test ji-jl-32-32 failed
+Test ji-jl-32-64 failed
+Test ji-jl-64-32 failed
+Test ji-jl-64-64 failed
+Test ji-je-32-32 failed
+Test ji-je-32-64 failed
+Test ji-je-64-32 failed
+Test ji-je-64-64 failed
+Test ji-jne-32-32 failed
+Test ji-jne-32-64 failed
+Test ji-jne-64-32 failed
+Test ji-jne-64-64 failed
+Test ji-jge-32-32 failed
+Test ji-jge-32-64 failed
+Test ji-jge-64-32 failed
+Test ji-jge-64-64 failed
+Test ji-jg-32-32 failed
+Test ji-jg-32-64 failed
+Test ji-jg-64-32 failed
+Test ji-jg-64-64 failed
+Test ji-call-32-32 failed
+Test ji-call-32-64 failed
+Test ji-call-64-32 failed
+Test ji-call-64-64 failed
+  32/96 ISA Checks Failed
+./ctest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+  All 22 ISA Checks Succeed
+./htest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+  All 756 ISA Checks Succeed
+
+```
+
+这里完全不对原文件进行修改下，在Ubuntu24系统下的测试结果，和很多网上的blog相反的是，这里也有`All 756 ISA Check Success`，但是我并没有写iaddq，因此单纯看这个无疑是错误的。同时我们也会注意到有jtest中的很多错误，这里可能与iaddq有关，但网上也有人不去管这部分测试，截至目前，不去理会。
+
+接下来修改pipe-full.hcl，在进行如下修改后
+
+```hcl
+# Is instruction valid?
+bool instr_valid = f_icode in 
+ { INOP, IHALT, IRRMOVQ, IIRMOVQ, IRMMOVQ, IMRMOVQ,
+   IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ, IIADDQ };
+   
+# Does fetched instruction require a regid byte?
+bool need_regids =
+ f_icode in { IRRMOVQ, IOPQ, IPUSHQ, IPOPQ, 
+       IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ };
+
+
+# Does fetched instruction require a constant word?
+bool need_valC =
+ f_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL, IIADDQ };
+
+## What register should be used as the B source?
+word d_srcB = [
+ D_icode in { IOPQ, IRMMOVQ, IMRMOVQ, IIADDQ } : D_rB;
+ D_icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+ 1 : RNONE;  # Don't need register
+];
+
+## What register should be used as the E destination?
+word d_dstE = [
+ D_icode in { IRRMOVQ, IIRMOVQ, IOPQ, IIADDQ} : D_rB;
+ D_icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+ 1 : RNONE;  # Don't write any register
+];
+
+## Select input A to ALU
+word aluA = [
+ E_icode in { IRRMOVQ, IOPQ } : E_valA;
+ E_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ } : E_valC;
+ E_icode in { ICALL, IPUSHQ } : -8;
+ E_icode in { IRET, IPOPQ } : 8;
+ # Other instructions don't need ALU
+];
+
+## Select input B to ALU
+word aluB = [
+ E_icode in { IRMMOVQ, IMRMOVQ, IOPQ, ICALL, 
+       IPUSHQ, IRET, IPOPQ, IIADDQ } : E_valB;
+ E_icode in { IRRMOVQ, IIRMOVQ } : 0;
+ # Other instructions don't need ALU
+];
+```
+
+获得了如下结果
+
+```sh
+./optest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+Test op-iaddq-256-rdx failed
+Test op-iaddq-4-rdx failed
+Test op-iaddq-256-rbx failed
+Test op-iaddq-4-rbx failed
+Test op-iaddq-256-rsp failed
+Test op-iaddq-4-rsp failed
+  6/58 ISA Checks Failed
+./jtest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+Test ji-jle-64-32 failed
+Test ji-jl-32-64 failed
+Test ji-je-32-64 failed
+Test ji-je-64-32 failed
+Test ji-jne-32-64 failed
+Test ji-jne-64-32 failed
+Test ji-jge-32-64 failed
+Test ji-jg-64-32 failed
+  8/96 ISA Checks Failed
+./ctest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+  All 22 ISA Checks Succeed
+./htest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+  All 756 ISA Checks Succeed
+```
+
+注意到并没有任何变化，在我的简单尝试下，更改hcl至完全不可能正确的代码下，结果也没有任何改变。而且进行不带TFLAG的测试仍然正确。查询网上blog，甚至有明显错误的hcl代码，并且这个错误也普遍存在
+
+很奇怪的现象。让我们仔细看看，这个pl实际上就是一个批处理，调用同目录下的tester.pm模块。可见该模块使用yas编译，psim模拟运行。尝试对op-iaddq-4-rbx直接进行手动调试得结果如下。
+
+```sh
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/ptest$ ../pipe/psim op-iaddq-4-rbx.yo
+Y86-64 Processor: pipe-full.hcl
+26 bytes of code read
+
+Cycle 0. CC=Z=1 S=0 O=0, Stat=AOK
+F: predPC = 0x0
+D: instr = nop, rA = ----, rB = ----, valC = 0x0, valP = 0x0, Stat = BUB
+E: instr = nop, valC = 0x0, valA = 0x0, valB = 0x0
+   srcA = ----, srcB = ----, dstE = ----, dstM = ----, Stat = BUB
+M: instr = nop, Cnd = 0, valE = 0x0, valA = 0x0
+   dstE = ----, dstM = ----, Stat = BUB
+W: instr = nop, valE = 0x0, valM = 0x0, dstE = ----, dstM = ----, Stat = BUB
+        Fetch: f_pc = 0x0, imem_instr = irmovq, f_instr = irmovq
+        Execute: ALU: + 0x0 0x0 --> 0x0
+
+Cycle 1. CC=Z=1 S=0 O=0, Stat=AOK
+F: predPC = 0xa
+D: instr = irmovq, rA = ----, rB = %rbx, valC = 0x4, valP = 0xa, Stat = AOK
+E: instr = nop, valC = 0x0, valA = 0x0, valB = 0x0
+   srcA = ----, srcB = ----, dstE = ----, dstM = ----, Stat = BUB
+M: instr = nop, Cnd = 1, valE = 0x0, valA = 0x0
+   dstE = ----, dstM = ----, Stat = BUB
+W: instr = nop, valE = 0x0, valM = 0x0, dstE = ----, dstM = ----, Stat = BUB
+        Fetch: f_pc = 0xa, imem_instr = nop, f_instr = nop
+        Execute: ALU: + 0x0 0x0 --> 0x0
+
+#  .......
+
+
+12 instructions executed
+Status = HLT
+Condition Codes: Z=1 S=0 O=0
+Changed Register State:
+%rbx:   0x0000000000000000      0xffffffffffffffe4
+Changed Memory State:
+CPI: 8 cycles/8 instructions = 1.00
+```
+
+这里是正确的。一定程度上验证了我们的iaddq是有效的，并且测试程序也是有逻辑的。接下来测试一个失败的案例`op-iaddq-4-rdx`,最后的结果如下图
+
+```sh
+Cycle 11. CC=Z=1 S=0 O=0, Stat=AOK
+F: predPC = 0x1d
+D: instr = halt, rA = ----, rB = ----, valC = 0x0, valP = 0x1d, Stat = HLT
+E: instr = halt, valC = 0x0, valA = 0x0, valB = 0x0
+   srcA = ----, srcB = ----, dstE = ----, dstM = ----, Stat = HLT
+M: instr = nop, Cnd = 0, valE = 0x0, valA = 0x0
+   dstE = ----, dstM = ----, Stat = BUB
+W: instr = halt, valE = 0x0, valM = 0x0, dstE = ----, dstM = ----, Stat = HLT
+        Fetch: f_pc = 0x1d, imem_instr = halt, f_instr = halt
+        Execute: ALU: + 0x0 0x0 --> 0x0
+12 instructions executed
+Status = HLT
+Condition Codes: Z=1 S=0 O=0
+Changed Register State:
+%rdx:   0x0000000000000000      0xffffffffffffffe4
+Changed Memory State:
+CPI: 8 cycles/8 instructions = 1.00
+```
+
+通过yis，验证一下结果是否正确
+
+```sh
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/ptest$ ../misc/yis op-iaddq-4-rdx.yo
+Stopped in 8 steps at PC = 0x19.  Status 'HLT', CC Z=0 S=1 O=0
+Changes to registers:
+%rdx:   0x0000000000000000      0xffffffffffffffe4
+
+Changes to memory:
+```
+
+可见这里是这里的结果是对的，Z，S的标志位是存在问题的，这里错误的设置了Z标志位，而没有设置S标志位，这说明标志位的设定并不是我们想象中自动设定的。需要反过去看看pipe-full代码。
+
+```hcl
+## Should the condition codes be updated?
+bool set_cc = E_icode == IOPQ &&
+ # State changes only during normal operation
+ !m_stat in { SADR, SINS, SHLT } && !W_stat in { SADR, SINS, SHLT };
+```
+
+可见我们应该在这一段代码中做一些变化，因为IOPQ实际上并没有包含IIADDQ，尝试将其做出以下修改
+
+```hcl
+## Should the condition codes be updated?
+bool set_cc = E_icode in { IOPQ, IIADDQ} &&
+ # State changes only during normal operation
+ !m_stat in { SADR, SINS, SHLT } && !W_stat in { SADR, SINS, SHLT };
+```
+
+可见
+
+```sh
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ (cd ../ptest; make SIM=../pipe/psim TFLAGS=-i)
+./optest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+  All 58 ISA Checks Succeed
+./jtest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+  All 96 ISA Checks Succeed
+./ctest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+  All 22 ISA Checks Succeed
+./htest.pl -s ../pipe/psim -i
+Simulating with ../pipe/psim
+  All 756 ISA Checks Succeed
+```
+
+直接完全正确！
+~~只能说不能轻易相信blog~~。
+
+然后介绍以下整个实验的组成。
+
+- `ncopy`: 数组赋值的逻辑代码。
+- `*driver`": 带有不同数组数据的驱动文件，使用ncopy 根据不同的前缀决定数组的大小。
+- `*.pl`: 包括`correntness.pl`与`benchmark.pl`正确性与性能测试。
+- `sim\ptest\`: 有关pipe-full.hcl的基准测试程序。
+
+**接下来就应该尝试对性能的优化**，首先用iaddq直接修改源代码`ncopy.ys`，修改ncopy段代码位如下所示
+
+```assmebly
+Loop: mrmovq (%rdi), %r10 # read val from src...
+ rmmovq %r10, (%rsi) # ...and store it to dst
+ andq %r10, %r10  # val <= 0?
+ jle Npos  # if so, goto Npos:
+ iaddq $1, %rax  # count++
+Npos: irmovq $1, %r10
+ iaddq $-1, %rdx  # len--
+ iaddq $8, %rdi  # src++
+ iaddq $8, %rsi  # dst++
+ andq %rdx,%rdx  # len > 0?
+ jg Loop   # if so, goto Loop:
+```
+
+```sh
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./correctness.pl
+Simulating with instruction set simulator yis
+        ncopy
+0       OK
+1       OK
+# ......
+68/68 pass correctness test
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./benchmark.pl
+        ncopy
+0       13
+1       28      28.00
+2       42      21.00
+3       53      17.67
+4       67      16.75
+5       78      15.60
+6       92      15.33
+7       103     14.71
+8       117     14.62
+9       128     14.22
+10      142     14.20
+11      153     13.91
+12      167     13.92
+13      178     13.69
+14      192     13.71
+15      203     13.53
+16      217     13.56
+17      228     13.41
+18      242     13.44
+19      253     13.32
+20      267     13.35
+21      278     13.24
+22      292     13.27
+23      303     13.17
+24      317     13.21
+25      328     13.12
+26      342     13.15
+27      353     13.07
+28      367     13.11
+29      378     13.03
+30      392     13.07
+31      403     13.00
+32      417     13.03
+33      428     12.97
+34      442     13.00
+35      453     12.94
+36      467     12.97
+37      478     12.92
+38      492     12.95
+39      503     12.90
+40      517     12.93
+41      528     12.88
+42      542     12.90
+43      553     12.86
+44      567     12.89
+45      578     12.84
+46      592     12.87
+47      603     12.83
+48      617     12.85
+49      628     12.82
+50      642     12.84
+51      653     12.80
+52      667     12.83
+53      678     12.79
+54      692     12.81
+55      703     12.78
+56      717     12.80
+57      728     12.77
+58      742     12.79
+59      753     12.76
+60      767     12.78
+61      778     12.75
+62      792     12.77
+63      803     12.75
+64      817     12.77
+Average CPE     13.70
+Score   0.0/60.0
+```
+
+好消息，改对了，坏消息，效率**仍然是零蛋**。让人怀疑是否有提升，测试原版。
+
+```sh
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./benchmark.pl
+        ncopy
+0       13
+1       29      29.00
+2       45      22.50
+3       57      19.00
+4       73      18.25
+5       85      17.00
+6       101     16.83
+7       113     16.14
+8       129     16.12
+9       141     15.67
+10      157     15.70
+11      169     15.36
+12      185     15.42
+13      197     15.15
+14      213     15.21
+15      225     15.00
+16      241     15.06
+17      253     14.88
+18      269     14.94
+19      281     14.79
+20      297     14.85
+21      309     14.71
+22      325     14.77
+23      337     14.65
+24      353     14.71
+25      365     14.60
+26      381     14.65
+27      393     14.56
+28      409     14.61
+29      421     14.52
+30      437     14.57
+31      449     14.48
+32      465     14.53
+33      477     14.45
+34      493     14.50
+35      505     14.43
+36      521     14.47
+37      533     14.41
+38      549     14.45
+39      561     14.38
+40      577     14.43
+41      589     14.37
+42      605     14.40
+43      617     14.35
+44      633     14.39
+45      645     14.33
+46      661     14.37
+47      673     14.32
+48      689     14.35
+49      701     14.31
+50      717     14.34
+51      729     14.29
+52      745     14.33
+53      757     14.28
+54      773     14.31
+55      785     14.27
+56      801     14.30
+57      813     14.26
+58      829     14.29
+59      841     14.25
+60      857     14.28
+61      869     14.25
+62      885     14.27
+63      897     14.24
+64      913     14.27
+Average CPE     15.18
+Score   0.0/60.0
+```
+
+可见CPE确实有两个点的提升。但是由于分数的计算规则，仍然是零分。忍不了了，局部性原理，分支预测，流水线优化，全部启动启动启动！
+
+注意到，在下面的运行过程中，程序做了一个错误的预测
+
+![predic_miss](https://s2.loli.net/2025/10/12/Ko1lq3XsarxECg4.png)
+
+这里的长度是4，但是程序认为应该根据jle的值跳转到Done,显然这样的判断大部分情况下都是错误的。
+
+![BUB](https://s2.loli.net/2025/10/12/qvhMJw5ueciFUZB.png)
+
+出现了一些预测错误的惩罚。由此可以联想到，在对正整数的计数上也会出现这样的预测错误带来的惩罚。从《90分钟现代微处理器》以及CS：APP中我们了解到，这些问题可以由带谓词的操作处理（Opperation with Predication）。但很可惜这里没有提前定义，但也没有命令禁止这样的操作
+
+这里需要看一下CSAPP第5章相关内容。
+
+同时建议看一下.pl文件的处理流程，通过对这些文件的分析，我们可以找到一种针对特定大小数据的性能分析方式
+
+```sh
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./gen-driver.pl -n 16 -f ncopy.ys > driver.ys
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ../misc/yas driver.ys
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./psim -v 0 driver.yo
+CPI: 123 cycles/100 instructions = 1.23
+```
+
+这就是benchmark.pl的基本运行流程，这里使用的数据量大小是16，而CPI则是123cycles/100即1.23，总cycle则是123，由于数据量是16，这里的CPE则是$123/16=7.69$。这个较低的数值是因为在这个测试中我已经使用了4阶的循环展开。对CPE的性能提升（相对于iaddq）则是$(13.56 - 7.69) / 13.56 * 100\% = 43.29 \%$。
+
+这个提升来自ref6，最终benchmark得分是48.6。继续优化的话这种方式的极限是ref7中的方法，考虑循环展开与消除分支预测惩罚。最终受`./check-len.pl < ncopy.yo`这个输出必须小于1000byte的限制，得分是Ave CPE 7.6。得分58.1，与满分CPE相差0.1。
+
+这种方式整体上是在用 代码复杂度 做 时间 的 trade-off。通过循环展开和特殊优化避免分支预测失败的方式优化代码。本质上属于针对特定运行模式的特定函数优化。
+
+两个blog都指出对控制流的优化。因此这里尝试一下。
+
+> 为什么这里的得分是定值的？
+>
+> 很多人认为运行过程应该是像”跑分一样“随机的，但这里的模拟过程实际上是机械的，也就是说benchmark在常规计算机上不稳定的得分在这里是不成立的。
+
+首先对这个最好的做一下分析整理
+
+```assmebly
+# You can modify this portion
+# Loop header
+    #xorq   %rax,%rax
+    iaddq   $-10, %rdx
+    jl      Root            # len < 10
+
+Loop1:
+
+    mrmovq  (%rdi), %r8     # src[0] -> r8
+    mrmovq  8(%rdi), %r9    # src[1] -> r9
+    andq    %r8, %r8        # r8 set Z,S
+    rmmovq  %r8, (%rsi)     # r8 -> dst[0]
+    rmmovq  %r9, 8(%rsi)    # r9 -> dst[1]    
+    jle     Loop2           # 判断 r8是否<= 0
+    iaddq   $1, %rax        # count++
+Loop2:
+    andq    %r9, %r9        # r9 set Z,S
+    jle     Loop3           # 判断 r9
+    iaddq   $1, %rax        # count ++
+Loop3:
+    mrmovq  16(%rdi), %r8   # src[2] -> r8
+    mrmovq  24(%rdi), %r9   # src[3] -> r9
+    andq    %r8, %r8        # r8 set Z,S
+    rmmovq  %r8, 16(%rsi)   # ..
+    rmmovq  %r9, 24(%rsi)   # ..
+    jle     Loop4           # r8
+    iaddq   $1, %rax        # ..
+Loop4:
+    andq    %r9, %r9        # r9 set Z,S
+    jle     Loop5           # ..
+    iaddq   $1, %rax        # ..
+Loop5:
+    mrmovq  32(%rdi), %r8   # src[4]
+    mrmovq  40(%rdi), %r9   # src[5]
+    andq    %r8, %r8        # r8 set CC
+    rmmovq  %r8, 32(%rsi)   # dst[4]
+    rmmovq  %r9, 40(%rsi)   # dst[5]
+    jle     Loop6           # ..
+    iaddq   $1, %rax        # count++
+Loop6:
+    andq    %r9, %r9        # r9 set CC
+    jle     Loop7           # ..
+    iaddq   $1, %rax        # count ++
+Loop7:
+    mrmovq  48(%rdi), %r8   # src[6]
+    mrmovq  56(%rdi), %r9   # src[7]
+    andq    %r8, %r8        # r8 set CC
+    rmmovq  %r8, 48(%rsi)   # dst[6]
+    rmmovq  %r9, 56(%rsi)   # dst[7]
+    jle     Loop8           # ..
+    iaddq   $1, %rax        # count++
+Loop8:
+    andq    %r9, %r9        # r9 set CC
+    jle     Loop9           # ..
+    iaddq   $1, %rax        # count ++
+
+Loop9:
+    mrmovq  64(%rdi), %r8   # src[8]
+    mrmovq  72(%rdi), %r9   # src[9]
+    andq    %r8, %r8        # r8 set CC
+    rmmovq  %r8, 64(%rsi)   # dst[8]
+    rmmovq  %r9, 72(%rsi)   # dst[9]
+    jle     Loop10          # ..
+    iaddq   $1, %rax        # count ++
+Loop10:
+    andq    %r9, %r9        # r9 set CC
+    jle     Update          # 这里跳转到Loop结束
+    iaddq   $1, %rax        # count ++
+
+Update:
+    iaddq   $80, %rdi       # 更新下标
+    iaddq   $80, %rsi       # 更新下标
+
+Test1:
+    iaddq   $-10, %rdx  # len - 8   # 判断10的循环
+    jge     Loop1                   # 跳转到Loop
+
+
+# len in [0, 1, ..., 9]
+Root:                       # 处理所有长度小于10，这里用到了二分跳转, 不过没有进行到底
+    iaddq   $6, %rdx        # len - 4   
+    jl      Left            # len < 4
+    jg      Right           # len > 4   
+    je      R4              # len = 4
+
+# len in [0, 1, 2, 3]
+Left:
+    iaddq   $1, %rdx    # len - 3
+    je      R3              # len = 3
+    iaddq   $1, %rdx    # len - 2
+    je      R2              # len = 2
+    iaddq   $1, %rdx    # len - 1
+    je      R1              # len = 1
+    ret
+
+
+# len in [5, 6, 7, 8, 9]
+Right:
+    iaddq   $-2, %rdx   # len - 6
+    jl      R5              # len = 5
+    je      R6              # len = 6
+    iaddq   $-1, %rdx   # len - 7
+    je      R7              # len = 7
+    iaddq   $-1, %rdx   # len - 8
+    je      R8              # len = 8
+
+
+
+R9:
+    mrmovq  64(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 64(%rsi)
+R8:
+    mrmovq  56(%rdi), %r8
+    jle     R81
+    iaddq   $1, %rax
+R81:
+    rmmovq  %r8, 56(%rsi)
+    andq    %r8, %r8
+R7:
+    mrmovq  48(%rdi), %r8
+    jle     R71
+    iaddq   $1, %rax
+R71:
+    rmmovq  %r8, 48(%rsi)
+    andq    %r8, %r8
+R6:
+    mrmovq  40(%rdi), %r8
+    jle     R61
+    iaddq   $1, %rax
+R61:
+    rmmovq  %r8, 40(%rsi)   
+    andq    %r8, %r8
+R5:
+    mrmovq  32(%rdi), %r8
+    jle     R51
+    iaddq   $1, %rax
+R51:
+    rmmovq  %r8, 32(%rsi)
+    andq    %r8, %r8
+R4:
+    mrmovq  24(%rdi), %r8
+    jle     R41
+    iaddq   $1, %rax
+R41:
+    rmmovq  %r8, 24(%rsi)
+    andq    %r8, %r8
+R3:
+    mrmovq  16(%rdi), %r8
+    jle     R31
+    iaddq   $1, %rax
+R31:
+    rmmovq  %r8, 16(%rsi)
+    andq    %r8, %r8
+R2:
+    mrmovq  8(%rdi), %r8
+    jle     R21
+    iaddq   $1, %rax
+R21:
+    rmmovq  %r8, 8(%rsi)
+    andq    %r8, %r8
+R1:
+    mrmovq  (%rdi), %r8
+    jle     R11
+    iaddq   $1, %rax
+R11:
+    andq    %r8, %r8
+    rmmovq  %r8, (%rsi)
+    jle     Done
+    iaddq   $1, %rax
+```
+
+这里使用两个寄存器r8,r9，实现了2*5=10阶的循环展开。最后二分了一下处理尾端数组。
+
+**这里为什么要是用两个寄存器进行循环展开？**
+
+这是一个很重要的问题，因为即使使用一个寄存器
+
+```assmebly
+LoopN:
+mrmovq  (%rdi), %r8
+rmmovq  %r8, (%rsi)
+andq    %r8, %r8
+jle     Npos_LoopN+1
+iaddq   $1, %rax
+```
+
+这样也是可以循环展开的，让我们从流水线对依赖的需求考虑。
+
+这里的
+
+```assmebly
+mrmovq  (%rdi), %r8
+rmmovq  %r8, (%rsi)
+```
+
+显然在r8上存在，E->D的一个数据冒险，需要一个bubble。
+
+通过多用一个寄存器就可以解决这个问题，当然，也有其他的方式：
+
+```assmebly
+LoopN:
+mrmovq  (%rdi), %r8
+andq    %r8, %r8
+rmmovq  %r8, (%rsi)
+jle     Npos_LoopN+1
+iaddq   $1, %rax
+```
+
+这样的结构似乎也可以，但这里其实andq也依赖于r8
+
+**这里为什么是十路循环展开**
+
+由于上面的双寄存器策略，我们仅仅只考虑偶数个数的循环展开。以下是2,4,6,8,10测试数据。
+
+```sh
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./benchmark.pl -f ncopy_2.ys
+        ncopy_2
+0       26
+1       29      29.00
+2       32      16.00
+3       32      10.67
+4       43      10.75
+5       46      9.20
+6       56      9.33
+7       64      9.14
+8       75      9.38
+9       81      9.00
+10      94      9.40
+11      100     9.09
+12      109     9.08
+13      115     8.85
+14      124     8.86
+15      130     8.67
+16      139     8.69
+17      145     8.53
+18      154     8.56
+19      160     8.42
+20      169     8.45
+21      175     8.33
+22      184     8.36
+23      190     8.26
+24      199     8.29
+25      205     8.20
+26      214     8.23
+27      220     8.15
+28      229     8.18
+29      235     8.10
+30      244     8.13
+31      250     8.06
+32      259     8.09
+33      265     8.03
+34      274     8.06
+35      280     8.00
+36      289     8.03
+37      295     7.97
+38      304     8.00
+39      310     7.95
+40      319     7.97
+41      325     7.93
+42      334     7.95
+43      340     7.91
+44      349     7.93
+45      355     7.89
+46      364     7.91
+47      370     7.87
+48      379     7.90
+49      385     7.86
+50      394     7.88
+51      400     7.84
+52      409     7.87
+53      415     7.83
+54      424     7.85
+55      430     7.82
+56      439     7.84
+57      445     7.81
+58      454     7.83
+59      460     7.80
+60      469     7.82
+61      475     7.79
+62      484     7.81
+63      490     7.78
+64      499     7.80
+Average CPE     8.75
+Score   35.0/60.0
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./benchmark.pl -f ncopy_4.ys
+        ncopy_4
+0       26
+1       29      29.00
+2       32      16.00
+3       32      10.67
+4       43      10.75
+5       46      9.20
+6       56      9.33
+7       64      9.14
+8       75      9.38
+9       81      9.00
+10      86      8.60
+11      94      8.55
+12      105     8.75
+13      111     8.54
+14      112     8.00
+15      120     8.00
+16      131     8.19
+17      137     8.06
+18      138     7.67
+19      146     7.68
+20      157     7.85
+21      163     7.76
+22      164     7.45
+23      172     7.48
+24      183     7.62
+25      189     7.56
+26      190     7.31
+27      198     7.33
+28      209     7.46
+29      215     7.41
+30      216     7.20
+31      224     7.23
+32      235     7.34
+33      241     7.30
+34      242     7.12
+35      250     7.14
+36      261     7.25
+37      267     7.22
+38      268     7.05
+39      276     7.08
+40      287     7.17
+41      293     7.15
+42      294     7.00
+43      302     7.02
+44      313     7.11
+45      319     7.09
+46      320     6.96
+47      328     6.98
+48      339     7.06
+49      345     7.04
+50      346     6.92
+51      354     6.94
+52      365     7.02
+53      371     7.00
+54      372     6.89
+55      380     6.91
+56      391     6.98
+57      397     6.96
+58      398     6.86
+59      406     6.88
+60      417     6.95
+61      423     6.93
+62      424     6.84
+63      432     6.86
+64      443     6.92
+Average CPE     8.06
+Score   48.7/60.0
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./benchmark.pl -f ncopy_6.ys
+        ncopy_6
+0       26
+1       29      29.00
+2       32      16.00
+3       32      10.67
+4       43      10.75
+5       46      9.20
+6       56      9.33
+7       64      9.14
+8       75      9.38
+9       81      9.00
+10      84      8.40
+11      87      7.91
+12      97      8.08
+13      105     8.08
+14      116     8.29
+15      122     8.13
+16      121     7.56
+17      124     7.29
+18      134     7.44
+19      142     7.47
+20      153     7.65
+21      159     7.57
+22      158     7.18
+23      161     7.00
+24      171     7.12
+25      179     7.16
+26      190     7.31
+27      196     7.26
+28      195     6.96
+29      198     6.83
+30      208     6.93
+31      216     6.97
+32      227     7.09
+33      233     7.06
+34      232     6.82
+35      235     6.71
+36      245     6.81
+37      253     6.84
+38      264     6.95
+39      270     6.92
+40      269     6.72
+41      272     6.63
+42      282     6.71
+43      290     6.74
+44      301     6.84
+45      307     6.82
+46      306     6.65
+47      309     6.57
+48      319     6.65
+49      327     6.67
+50      338     6.76
+51      344     6.75
+52      343     6.60
+53      346     6.53
+54      356     6.59
+55      364     6.62
+56      375     6.70
+57      381     6.68
+58      380     6.55
+59      383     6.49
+60      393     6.55
+61      401     6.57
+62      412     6.65
+63      418     6.63
+64      417     6.52
+Average CPE     7.79
+Score   54.2/60.0
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./benchmark.pl -f ncopy_8.ys
+        ncopy_8
+0       26
+1       29      29.00
+2       32      16.00
+3       32      10.67
+4       43      10.75
+5       46      9.20
+6       56      9.33
+7       64      9.14
+8       75      9.38
+9       81      9.00
+10      84      8.40
+11      84      7.64
+12      95      7.92
+13      98      7.54
+14      108     7.71
+15      116     7.73
+16      127     7.94
+17      133     7.82
+18      132     7.33
+19      132     6.95
+20      143     7.15
+21      146     6.95
+22      156     7.09
+23      164     7.13
+24      175     7.29
+25      181     7.24
+26      180     6.92
+27      180     6.67
+28      191     6.82
+29      194     6.69
+30      204     6.80
+31      212     6.84
+32      223     6.97
+33      229     6.94
+34      228     6.71
+35      228     6.51
+36      239     6.64
+37      242     6.54
+38      252     6.63
+39      260     6.67
+40      271     6.78
+41      277     6.76
+42      276     6.57
+43      276     6.42
+44      287     6.52
+45      290     6.44
+46      300     6.52
+47      308     6.55
+48      319     6.65
+49      325     6.63
+50      324     6.48
+51      324     6.35
+52      335     6.44
+53      338     6.38
+54      348     6.44
+55      356     6.47
+56      367     6.55
+57      373     6.54
+58      372     6.41
+59      372     6.31
+60      383     6.38
+61      386     6.33
+62      396     6.39
+63      404     6.41
+64      415     6.48
+Average CPE     7.64
+Score   57.2/60.0
+ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Architecture-Lab/sim/pipe$ ./benchmark.pl -f ncopy_10.ys
+        ncopy_10
+0       26
+1       29      29.00
+2       32      16.00
+3       32      10.67
+4       43      10.75
+5       46      9.20
+6       56      9.33
+7       64      9.14
+8       75      9.38
+9       81      9.00
+10      89      8.90
+11      92      8.36
+12      95      7.92
+13      95      7.31
+14      106     7.57
+15      109     7.27
+16      119     7.44
+17      127     7.47
+18      138     7.67
+19      144     7.58
+20      148     7.40
+21      151     7.19
+22      154     7.00
+23      154     6.70
+24      165     6.88
+25      168     6.72
+26      178     6.85
+27      186     6.89
+28      197     7.04
+29      203     7.00
+30      207     6.90
+31      210     6.77
+32      213     6.66
+33      213     6.45
+34      224     6.59
+35      227     6.49
+36      237     6.58
+37      245     6.62
+38      256     6.74
+39      262     6.72
+40      266     6.65
+41      269     6.56
+42      272     6.48
+43      272     6.33
+44      283     6.43
+45      286     6.36
+46      296     6.43
+47      304     6.47
+48      315     6.56
+49      321     6.55
+50      325     6.50
+51      328     6.43
+52      331     6.37
+53      331     6.25
+54      342     6.33
+55      345     6.27
+56      355     6.34
+57      363     6.37
+58      374     6.45
+59      380     6.44
+60      384     6.40
+61      387     6.34
+62      390     6.29
+63      390     6.19
+64      401     6.27
+Average CPE     7.60
+Score   58.1/60.0
+```
+
+这里给出我的.pl生成程序
+
+```perl
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my @unrolls = (2,4,6,8,10);  # 支持循环展开路数
+my $template_file = "ncopy.ys";  # 原始模板文件
+my $outfile_prefix = "ncopy_";
+
+# 读取模板
+open my $tmpl_fh, "<", $template_file or die $!;
+my @template = <$tmpl_fh>;
+close $tmpl_fh;
+
+# 找到 Loop1 起点和 Update 结束行号
+my ($loop_start, $loop_end);
+for my $i (0..$#template) {
+    $loop_start = $i if $template[$i] =~ /^# Loop header/;
+    $loop_end   = $i if $template[$i] =~ /^Root:/;
+}
+die "未找到 xor/Root 标签" unless defined $loop_start && defined $loop_end;
+
+# 尾部模板（Test1 后到文件末尾）
+my @tail_template = @template[$loop_end..$#template];
+
+foreach my $n (@unrolls) {
+    my $outfile = "${outfile_prefix}${n}.ys";
+    open my $out_fh, ">", $outfile or die $!;
+
+    # 输出 Loop1 前的内容
+    for my $i (0..$loop_start-1) {
+        print $out_fh $template[$i];
+    }
+
+    # 生成 Loop 展开
+    my $loop_idx = 1;
+    my $offset = 0;
+
+    print $out_fh <<"HEAD";
+
+    #xorq   %rax,%rax
+    iaddq   \$-10, %rdx
+    jl      Root            # len < 10
+HEAD
+
+    while ($offset < $n*8) {
+        my $r8_offset = $offset;
+        my $r9_offset = $offset + 8;
+
+        print $out_fh <<"LOOP";
+
+Loop$loop_idx:
+    mrmovq  $r8_offset(%rdi), %r8
+    mrmovq  $r9_offset(%rdi), %r9
+    andq    %r8, %r8
+    rmmovq  %r8, $r8_offset(%rsi)
+    rmmovq  %r9, $r9_offset(%rsi)
+    jle     Loop${loop_idx}1
+    iaddq   \$1, %rax
+Loop${loop_idx}1:
+    andq    %r9, %r9
+    jle     Loop${loop_idx}2
+    iaddq   \$1, %rax
+Loop${loop_idx}2:
+
+LOOP
+
+        $offset += 16;
+        $loop_idx++;
+    }
+
+    # 添加 Update 和 Test1
+    my $update_bytes = $n*8;  # 每次循环处理 n*2 个元素，每个元素 8 字节
+    print $out_fh <<"UPDATE";
+Update:
+    iaddq   \$$update_bytes, %rdi
+    iaddq   \$$update_bytes, %rsi
+
+Test1:
+    iaddq   \$-$n, %rdx
+    jge     Loop1
+UPDATE
+
+    # 输出尾部模板
+    print $out_fh @tail_template;
+
+    close $out_fh;
+    print "生成 $outfile 完成\n";
+}
+
+```
+
+读者可以自己运行的试一试。总之循环展的越开对CPE的优势越大。
+
+这个时候如果我们回头看看小于10的所有情况
+**loop4**
+```sh
+        ncopy_loop4
+0       15
+1       24      24.00
+2       34      17.00
+3       41      13.67
+4       45      11.25
+5       54      10.80
+6       64      10.67
+7       71      10.14
+8       71      8.88
+9       80      8.89
+10      90      9.00
+```
+**loop10**
+```sh
+        ncopy_10
+0       26
+1       29      29.00
+2       32      16.00
+3       32      10.67
+4       43      10.75
+5       46      9.20
+6       56      9.33
+7       64      9.14
+8       75      9.38
+9       81      9.00
+10      89      8.90
+```
+
+这里虽然在1的时候略逊一筹，低了5个CPE，但是根本无伤大雅，因为，在这个10展开的尾数处理中通过二分确定长度的方式，根本上减少了一个长度值的维护。即使在1的性能上有损失，也是值得的。加个特判的trade-off是不值得的。
+
+***某种程度上可以说这份代码已经是除pipe-full以外的最优解。***
+
+最后在ref8加一个对pipe-full.hcl下手的blog。
+
+这里的话需要修改pipe-full.hcl中的forwarding算法，从E->D添加一个旁路，效果与双寄存器是一致的。但最后满分修改了预测策略，修改为了不跳转，结合特殊的展开拉低整体CPE。
+
+总的来说，取得满分需要对bubble进行更细致的分析。**~~无脑完成4.57加载转发旁路也可以，因为最后余数处理总会遇到，这里我就修改成满分版本了~~**
 
 ## Appendix
 
@@ -747,6 +1967,7 @@ make VERSION=full
 ```
 
 这时需要修改Makefile文件对应位置，并修改部分被弃用的函数代码
+
 ```makefile
 # Modify the following line so that gcc can find the tcl.h and tk.h
 # header files on your system. Comment this out if you don't have
@@ -758,9 +1979,10 @@ TKINC=-isystem /usr/include/tcl8.6
 # flags.
 
 CC=gcc
-CFLAGS=-Wall -O2 -DUSE_INTERP_RESULT
+CFLAGS=-Wall -O2 -fcommon -DUSE_INTERP_RESULT
 ```
-在这段位置修改`sim/seq/Makefile`文件
+
+在这段位置修改`sim/seq/Makefile`文件, 这里值得注意的是这里修改了`CFLAGS`,添加了`-DUSE_INTERP_RESULT`选项，在所有有修改8.6的位置都应该添加这个选项，切勿删除原有的 -fcommon
 
 ```c
 // 因为tcl8.6,tk8.6在sunos上编译时会定义这个函数，而matherr在math.h中被声明为weak符号
@@ -768,6 +1990,7 @@ CFLAGS=-Wall -O2 -DUSE_INTERP_RESULT
 // extern int matherr();
 // int *tclDummyMathPtr = (int *) matherr;
 ```
+
 并在源代码中注释掉所有用到matherr这个函数定义的地方,涉及两个源代码`psim.c`以及`ssim.c`。
 
 通过这两种方式，`make VERSION=full`应该可以正常编译了，但是当尝试使用mobaXterm进行转发GUI时可能还是会出现一些问题，有关安全性验证。这里给出我用的命令以及chat的记录
@@ -796,3 +2019,8 @@ sudo systemctl restart sshd
 3. <https://bobokick.github.io/showPage/CSAPP_Labs/4_ArchitectureLab/readme.html>
 4. <https://jarenl.com/index.php/2025/02/24/csapp_chp4/>
 5. <https://www.lighterra.com/papers/modernmicroprocessors/>
+6. <https://zhuanlan.zhihu.com/p/36793761>
+7. <https://zhuanlan.zhihu.com/p/641239498>
+8. [CSDN 满分](https://blog.csdn.net/jokerMingge/article/details/128377723#:~:text=%E6%9C%AC%E6%96%87%E8%AF%A6%E7%BB%86%E4%BB%8B%E7%BB%8D%E4%BA%86CSAPP%EE%80%80%20Architecture%EE%80%80%EE%80%81%20Lab%EE%80%81%E4%B8%AD%E5%85%B3%E4%BA%8EY86-64%E5%A4%84%E7%90%86%E5%99%A8%E5%AE%9E%E7%8E%B0%E7%9A%84%E5%AE%9E%E9%AA%8C%EF%BC%8C%E5%8C%85%E6%8B%AC%E7%BC%96%E5%86%99%E6%B1%87%E7%BC%96%E4%BB%A3%E7%A0%81%E3%80%81%E6%89%A9%E5%B1%95SEQ%E6%A8%A1%E6%8B%9F%E5%99%A8%E6%8C%87%E4%BB%A4%E3%80%81%E5%A4%84%E7%90%86%E5%99%A8%E4%BC%98%E5%8C%96%E4%B8%8E%E8%AE%BE%E8%AE%A1%EF%BC%8C%E5%B8%AE%E5%8A%A9%E8%AF%BB%E8%80%85%E7%90%86%E8%A7%A3%E5%A4%84%E7%90%86%E5%99%A8%E6%9E%B6%E6%9E%84%E5%92%8C%E8%BD%AF%E7%A1%AC%E4%BB%B6%E4%BA%A4%E4%BA%92%E3%80%82)
+9. <https://dreamanddead.github.io/CSAPP-3e-Solutions/>
+10. <https://www.cnblogs.com/albert8216/articles/17643426.html>

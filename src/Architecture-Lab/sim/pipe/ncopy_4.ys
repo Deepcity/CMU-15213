@@ -1,0 +1,159 @@
+#/* $begin ncopy-ys */
+##################################################################
+# ncopy.ys - Copy a src block of len words to dst.
+# Return the number of positive words (>0) contained in src.
+#
+# Include your name and ID here.
+#
+# Describe how and why you modified the baseline code.
+#
+##################################################################
+# Do not modify this portion
+# Function prologue.
+# %rdi = src , %rsi = dst, %rdx = len
+ncopy:
+
+##################################################################
+# You can modify this portion
+
+    #xorq   %rax,%rax
+    iaddq   $-10, %rdx
+    jl      Root            # len < 10
+
+Loop1:
+    mrmovq  0(%rdi), %r8
+    mrmovq  8(%rdi), %r9
+    andq    %r8, %r8
+    rmmovq  %r8, 0(%rsi)
+    rmmovq  %r9, 8(%rsi)
+    jle     Loop11
+    iaddq   $1, %rax
+Loop11:
+    andq    %r9, %r9
+    jle     Loop12
+    iaddq   $1, %rax
+Loop12:
+
+
+Loop2:
+    mrmovq  16(%rdi), %r8
+    mrmovq  24(%rdi), %r9
+    andq    %r8, %r8
+    rmmovq  %r8, 16(%rsi)
+    rmmovq  %r9, 24(%rsi)
+    jle     Loop21
+    iaddq   $1, %rax
+Loop21:
+    andq    %r9, %r9
+    jle     Loop22
+    iaddq   $1, %rax
+Loop22:
+
+Update:
+    iaddq   $32, %rdi
+    iaddq   $32, %rsi
+
+Test1:
+    iaddq   $-4, %rdx
+    jge     Loop1
+Root:                       # 处理所有长度小于10，这里用到了二分跳转, 不过没有进行到底
+    iaddq   $6, %rdx        # len - 4   
+    jl      Left            # len < 4
+    jg      Right           # len > 4   
+    je      R4              # len = 4
+
+# len in [0, 1, 2, 3]
+Left:
+    iaddq   $1, %rdx    # len - 3
+    je      R3              # len = 3
+    iaddq   $1, %rdx    # len - 2
+    je      R2              # len = 2
+    iaddq   $1, %rdx    # len - 1
+    je      R1              # len = 1
+    ret
+
+
+# len in [5, 6, 7, 8, 9]
+Right:
+    iaddq   $-2, %rdx   # len - 6
+    jl      R5              # len = 5
+    je      R6              # len = 6
+    iaddq   $-1, %rdx   # len - 7
+    je      R7              # len = 7
+    iaddq   $-1, %rdx   # len - 8
+    je      R8              # len = 8
+
+
+
+R9:
+    mrmovq  64(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 64(%rsi)
+R8:
+    mrmovq  56(%rdi), %r8
+    jle     R81
+    iaddq   $1, %rax
+R81:
+    rmmovq  %r8, 56(%rsi)
+    andq    %r8, %r8
+R7:
+    mrmovq  48(%rdi), %r8
+    jle     R71
+    iaddq   $1, %rax
+R71:
+    rmmovq  %r8, 48(%rsi)
+    andq    %r8, %r8
+R6:
+    mrmovq  40(%rdi), %r8
+    jle     R61
+    iaddq   $1, %rax
+R61:
+    rmmovq  %r8, 40(%rsi)   
+    andq    %r8, %r8
+R5:
+    mrmovq  32(%rdi), %r8
+    jle     R51
+    iaddq   $1, %rax
+R51:
+    rmmovq  %r8, 32(%rsi)
+    andq    %r8, %r8
+R4:
+    mrmovq  24(%rdi), %r8
+    jle     R41
+    iaddq   $1, %rax
+R41:
+    rmmovq  %r8, 24(%rsi)
+    andq    %r8, %r8
+R3:
+    mrmovq  16(%rdi), %r8
+    jle     R31
+    iaddq   $1, %rax
+R31:
+    rmmovq  %r8, 16(%rsi)
+    andq    %r8, %r8
+R2:
+    mrmovq  8(%rdi), %r8
+    jle     R21
+    iaddq   $1, %rax
+R21:
+    rmmovq  %r8, 8(%rsi)
+    andq    %r8, %r8
+R1:
+    mrmovq  (%rdi), %r8
+    jle     R11
+    iaddq   $1, %rax
+R11:
+    andq    %r8, %r8
+    rmmovq  %r8, (%rsi)
+    jle     Done
+    iaddq   $1, %rax
+
+##################################################################
+# Do not modify the following section of code
+# Function epilogue.
+Done:
+	ret
+##################################################################
+# Keep the following label at the end of your function
+End:
+#/* $end ncopy-ys */

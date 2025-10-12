@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef word_t word_t;
 
@@ -19,8 +20,8 @@ word_t ncopy(word_t *src, word_t *dst, word_t len)
 	*dst++ = val;
 	if (val > 0)
 	    count++;
-	len--;
     }
+    len--;
     return count;
 }
 /* $end ncopy */

@@ -93,7 +93,6 @@ for ($i = 0; $i <= $blocklen; $i++) {
 	printf "%d\t%d\n", $i, $stat;
       }
     }
-      
 }
 
 $acpe = $tcpe/$blocklen;

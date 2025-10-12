@@ -23,29 +23,262 @@ StartFun:
 ##################################################################
 # Do not modify this portion
 # Function prologue.
-# %rdi = src, %rsi = dst, %rdx = len
+# %rdi = src , %rsi = dst, %rdx = len
 ncopy:
 
 ##################################################################
 # You can modify this portion
-	# Loop header
-	xorq %rax,%rax		# count = 0;
-	andq %rdx,%rdx		# len <= 0?
-	jle Done		# if so, goto Done:
+# Loop header
+    #xorq   %rax,%rax
+    iaddq   $-10, %rdx
+    jl      Root            # len < 10
 
-Loop:	mrmovq (%rdi), %r10	# read val from src...
-	rmmovq %r10, (%rsi)	# ...and store it to dst
-	andq %r10, %r10		# val <= 0?
-	jle Npos		# if so, goto Npos:
-	irmovq $1, %r10
-	addq %r10, %rax		# count++
-Npos:	irmovq $1, %r10
-	subq %r10, %rdx		# len--
-	irmovq $8, %r10
-	addq %r10, %rdi		# src++
-	addq %r10, %rsi		# dst++
-	andq %rdx,%rdx		# len > 0?
-	jg Loop			# if so, goto Loop:
+Loop1:
+    mrmovq  (%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, (%rsi)
+    jle     L1_skip0
+    iaddq   $1, %rax
+L1_skip0:
+
+    mrmovq  8(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 8(%rsi)
+    jle     L1_skip1
+    iaddq   $1, %rax
+L1_skip1:
+
+    mrmovq  16(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 16(%rsi)
+    jle     L1_skip2
+    iaddq   $1, %rax
+L1_skip2:
+
+    mrmovq  24(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 24(%rsi)
+    jle     L1_skip3
+    iaddq   $1, %rax
+L1_skip3:
+
+    mrmovq  32(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 32(%rsi)
+    jle     L1_skip4
+    iaddq   $1, %rax
+L1_skip4:
+
+    mrmovq  40(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 40(%rsi)
+    jle     L1_skip5
+    iaddq   $1, %rax
+L1_skip5:
+
+    mrmovq  48(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 48(%rsi)
+    jle     L1_skip6
+    iaddq   $1, %rax
+L1_skip6:
+
+    mrmovq  56(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 56(%rsi)
+    jle     L1_skip7
+    iaddq   $1, %rax
+L1_skip7:
+
+    mrmovq  64(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 64(%rsi)
+    jle     L1_skip8
+    iaddq   $1, %rax
+L1_skip8:
+
+    mrmovq  72(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 72(%rsi)
+    jle     L1_skip9
+    iaddq   $1, %rax
+L1_skip9:
+
+Update:
+    iaddq   $80, %rdi
+    iaddq   $80, %rsi
+
+Test1:
+    iaddq   $-10, %rdx
+    jge     Loop1
+   iaddq   $-10, %rdx
+    jl      Root            # len < 10
+
+Loop1:
+
+    mrmovq  (%rdi), %r8     # src[0] -> r8
+    mrmovq  8(%rdi), %r9    # src[1] -> r9
+    andq    %r8, %r8        # r8 set Z,S
+    rmmovq  %r8, (%rsi)     # r8 -> dst[0]
+    rmmovq  %r9, 8(%rsi)    # r9 -> dst[1]    
+    jle     Loop2           # 判断 r8是否<= 0
+    iaddq   $1, %rax        # count++
+Loop2:
+    andq    %r9, %r9        # r9 set Z,S
+    jle     Loop3           # 判断 r9
+    iaddq   $1, %rax        # count ++
+Loop3:
+    mrmovq  16(%rdi), %r8   # src[2] -> r8
+    mrmovq  24(%rdi), %r9   # src[3] -> r9
+    andq    %r8, %r8        # r8 set Z,S
+    rmmovq  %r8, 16(%rsi)   # ..
+    rmmovq  %r9, 24(%rsi)   # ..
+    jle     Loop4           # r8
+    iaddq   $1, %rax        # ..
+Loop4:
+    andq    %r9, %r9        # r9 set Z,S
+    jle     Loop5           # ..
+    iaddq   $1, %rax        # ..
+Loop5:
+    mrmovq  32(%rdi), %r8   # src[4]
+    mrmovq  40(%rdi), %r9   # src[5]
+    andq    %r8, %r8        # r8 set CC
+    rmmovq  %r8, 32(%rsi)   # dst[4]
+    rmmovq  %r9, 40(%rsi)   # dst[5]
+    jle     Loop6           # ..
+    iaddq   $1, %rax        # count++
+Loop6:
+    andq    %r9, %r9        # r9 set CC
+    jle     Loop7           # ..
+    iaddq   $1, %rax        # count ++
+Loop7:
+    mrmovq  48(%rdi), %r8   # src[6]
+    mrmovq  56(%rdi), %r9   # src[7]
+    andq    %r8, %r8        # r8 set CC
+    rmmovq  %r8, 48(%rsi)   # dst[6]
+    rmmovq  %r9, 56(%rsi)   # dst[7]
+    jle     Loop8           # ..
+    iaddq   $1, %rax        # count++
+Loop8:
+    andq    %r9, %r9        # r9 set CC
+    jle     Loop9           # ..
+    iaddq   $1, %rax        # count ++
+
+Loop9:
+    mrmovq  64(%rdi), %r8   # src[8]
+    mrmovq  72(%rdi), %r9   # src[9]
+    andq    %r8, %r8        # r8 set CC
+    rmmovq  %r8, 64(%rsi)   # dst[8]
+    rmmovq  %r9, 72(%rsi)   # dst[9]
+    jle     Loop10          # ..
+    iaddq   $1, %rax        # count ++
+Loop10:
+    andq    %r9, %r9        # r9 set CC
+    jle     Update          # 这里跳转到Loop结束
+    iaddq   $1, %rax        # count ++
+
+Update:
+    iaddq   $80, %rdi       # 更新下标
+    iaddq   $80, %rsi       # 更新下标
+
+Test1:
+    iaddq   $-10, %rdx  # len - 8   # 判断10的循环
+    jge     Loop1                   # 跳转到Loop
+
+
+# len in [0, 1, ..., 9]
+Root:                       # 处理所有长度小于10，这里用到了二分跳转, 不过没有进行到底
+    iaddq   $6, %rdx        # len - 4   
+    jl      Left            # len < 4
+    jg      Right           # len > 4   
+    je      R4              # len = 4
+
+# len in [0, 1, 2, 3]
+Left:
+    iaddq   $1, %rdx    # len - 3
+    je      R3              # len = 3
+    iaddq   $1, %rdx    # len - 2
+    je      R2              # len = 2
+    iaddq   $1, %rdx    # len - 1
+    je      R1              # len = 1
+    ret
+
+
+# len in [5, 6, 7, 8, 9]
+Right:
+    iaddq   $-2, %rdx   # len - 6
+    jl      R5              # len = 5
+    je      R6              # len = 6
+    iaddq   $-1, %rdx   # len - 7
+    je      R7              # len = 7
+    iaddq   $-1, %rdx   # len - 8
+    je      R8              # len = 8
+
+
+
+R9:
+    mrmovq  64(%rdi), %r8
+    andq    %r8, %r8
+    rmmovq  %r8, 64(%rsi)
+R8:
+    mrmovq  56(%rdi), %r8
+    jle     R81
+    iaddq   $1, %rax
+R81:
+    rmmovq  %r8, 56(%rsi)
+    andq    %r8, %r8
+R7:
+    mrmovq  48(%rdi), %r8
+    jle     R71
+    iaddq   $1, %rax
+R71:
+    rmmovq  %r8, 48(%rsi)
+    andq    %r8, %r8
+R6:
+    mrmovq  40(%rdi), %r8
+    jle     R61
+    iaddq   $1, %rax
+R61:
+    rmmovq  %r8, 40(%rsi)   
+    andq    %r8, %r8
+R5:
+    mrmovq  32(%rdi), %r8
+    jle     R51
+    iaddq   $1, %rax
+R51:
+    rmmovq  %r8, 32(%rsi)
+    andq    %r8, %r8
+R4:
+    mrmovq  24(%rdi), %r8
+    jle     R41
+    iaddq   $1, %rax
+R41:
+    rmmovq  %r8, 24(%rsi)
+    andq    %r8, %r8
+R3:
+    mrmovq  16(%rdi), %r8
+    jle     R31
+    iaddq   $1, %rax
+R31:
+    rmmovq  %r8, 16(%rsi)
+    andq    %r8, %r8
+R2:
+    mrmovq  8(%rdi), %r8
+    jle     R21
+    iaddq   $1, %rax
+R21:
+    rmmovq  %r8, 8(%rsi)
+    andq    %r8, %r8
+R1:
+    mrmovq  (%rdi), %r8
+    jle     R11
+    iaddq   $1, %rax
+R11:
+    andq    %r8, %r8
+    rmmovq  %r8, (%rsi)
+    jle     Done
+    iaddq   $1, %rax
+
 ##################################################################
 # Do not modify the following section of code
 # Function epilogue.
@@ -62,8 +295,8 @@ EndFun:
 ###############################
 	.align 8
 src:
-	.quad -1
-	.quad 2
+	.quad 1
+	.quad -2
 	.quad -3
 	.quad 4
 	.quad 0xbcdefa # This shouldn't get moved
