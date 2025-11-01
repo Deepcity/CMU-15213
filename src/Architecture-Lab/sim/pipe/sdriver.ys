@@ -34,87 +34,6 @@ ncopy:
     jl      Root            # len < 10
 
 Loop1:
-    mrmovq  (%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, (%rsi)
-    jle     L1_skip0
-    iaddq   $1, %rax
-L1_skip0:
-
-    mrmovq  8(%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, 8(%rsi)
-    jle     L1_skip1
-    iaddq   $1, %rax
-L1_skip1:
-
-    mrmovq  16(%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, 16(%rsi)
-    jle     L1_skip2
-    iaddq   $1, %rax
-L1_skip2:
-
-    mrmovq  24(%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, 24(%rsi)
-    jle     L1_skip3
-    iaddq   $1, %rax
-L1_skip3:
-
-    mrmovq  32(%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, 32(%rsi)
-    jle     L1_skip4
-    iaddq   $1, %rax
-L1_skip4:
-
-    mrmovq  40(%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, 40(%rsi)
-    jle     L1_skip5
-    iaddq   $1, %rax
-L1_skip5:
-
-    mrmovq  48(%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, 48(%rsi)
-    jle     L1_skip6
-    iaddq   $1, %rax
-L1_skip6:
-
-    mrmovq  56(%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, 56(%rsi)
-    jle     L1_skip7
-    iaddq   $1, %rax
-L1_skip7:
-
-    mrmovq  64(%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, 64(%rsi)
-    jle     L1_skip8
-    iaddq   $1, %rax
-L1_skip8:
-
-    mrmovq  72(%rdi), %r8
-    andq    %r8, %r8
-    rmmovq  %r8, 72(%rsi)
-    jle     L1_skip9
-    iaddq   $1, %rax
-L1_skip9:
-
-Update:
-    iaddq   $80, %rdi
-    iaddq   $80, %rsi
-
-Test1:
-    iaddq   $-10, %rdx
-    jge     Loop1
-   iaddq   $-10, %rdx
-    jl      Root            # len < 10
-
-Loop1:
 
     mrmovq  (%rdi), %r8     # src[0] -> r8
     mrmovq  8(%rdi), %r9    # src[1] -> r9
@@ -295,10 +214,10 @@ EndFun:
 ###############################
 	.align 8
 src:
-	.quad 1
-	.quad -2
-	.quad -3
-	.quad 4
+	.quad -1
+	.quad 2
+	.quad 3
+	.quad -4
 	.quad 0xbcdefa # This shouldn't get moved
 
 	.align 16

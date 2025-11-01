@@ -4,16 +4,10 @@
 #    Copyright (C) Randal E. Bryant, David R. O'Hallaron, 2014     #
 ####################################################################
 
-## Your task is to modify the design so that on any cycle, only
-## one of the two possible (valE and valM) register writes will occur.
-## This requires special handling of the popq instruction.
-## Overall strategy:  IPOPQ passes through pipe, 
-## treated as stack pointer increment, but not incrementing the PC
-## On refetch, modify fetched icode to indicate an instruction "IPOP2",
-## which reads from memory.
-## This requires modifying the definition of f_icode
-## and lots of other changes.  Relevant positions to change
-## are indicated by comments starting with keyword "1W".
+## Your task is to make the pipeline work without using any forwarding
+## The normal bypassing logic in the file is disabled.
+## You can only change the pipeline control logic at the end of this file.
+## The trick is to make the pipeline stall whenever there is a data hazard.
 
 ####################################################################
 #    C Include's.  Don't alter these                               #
@@ -44,8 +38,6 @@ wordsig ICALL	'I_CALL'
 wordsig IRET	'I_RET'
 wordsig IPUSHQ	'I_PUSHQ'
 wordsig IPOPQ	'I_POPQ'
-# 1W: Special instruction code for second try of popq
-wordsig IPOP2	'I_POP2'
 
 ##### Symbolic represenations of Y86-64 function codes            #####
 wordsig FNONE    'F_NONE'        # Default function code
@@ -78,8 +70,6 @@ wordsig f_icode	'if_id_next->icode'  # (Possibly modified) instruction code
 wordsig f_ifun	'if_id_next->ifun'   # Fetched instruction function
 wordsig f_valC	'if_id_next->valc'   # Constant data of fetched instruction
 wordsig f_valP	'if_id_next->valp'   # Address of following instruction
-## 1W: Provide access to the PC value for the current instruction
-wordsig f_pc	'f_pc'               # Address of fetched instruction
 boolsig imem_error 'imem_error'	     # Error signal from instruction memory
 boolsig instr_valid 'instr_valid'    # Is fetched instruction valid?
 
@@ -152,12 +142,8 @@ word f_pc = [
 ];
 
 ## Determine icode of fetched instruction
-## 1W: To split ipopq into two cycles, need to be able to 
-## modify value of icode,
-## so that it will be IPOP2 when fetched for second time.
 word f_icode = [
 	imem_error : INOP;
-	D_icode == IPOPQ : IPOP2;
 	1: imem_icode;
 ];
 
@@ -170,7 +156,7 @@ word f_ifun = [
 # Is instruction valid?
 bool instr_valid = f_icode in 
 	{ INOP, IHALT, IRRMOVQ, IIRMOVQ, IRMMOVQ, IMRMOVQ,
-	  IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ, IPOP2 };
+	  IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ };
 
 # Determine status code for fetched instruction
 word f_stat = [
@@ -183,7 +169,7 @@ word f_stat = [
 # Does fetched instruction require a regid byte?
 bool need_regids =
 	f_icode in { IRRMOVQ, IOPQ, IPUSHQ, IPOPQ, 
-		     IIRMOVQ, IRMMOVQ, IMRMOVQ, IPOP2 };
+		     IIRMOVQ, IRMMOVQ, IMRMOVQ };
 
 # Does fetched instruction require a constant word?
 bool need_valC =
@@ -192,28 +178,23 @@ bool need_valC =
 # Predict next value of PC
 word f_predPC = [
 	f_icode in { IJXX, ICALL } : f_valC;
-	## 1W: Want to refetch popq one time
-	f_icode == IPOPQ : f_pc;
 	1 : f_valP;
 ];
 
 ################ Decode Stage ######################################
 
-## W1: Strategy.  Decoding of popq rA should be treated the same
-## as would iaddq $8, %rsp
-## Decoding of pop2 rA treated same as mrmovq -8(%rsp), rA
 
 ## What register should be used as the A source?
 word d_srcA = [
 	D_icode in { IRRMOVQ, IRMMOVQ, IOPQ, IPUSHQ  } : D_rA;
-	D_icode in { IRET } : RRSP;
+	D_icode in { IPOPQ, IRET } : RRSP;
 	1 : RNONE; # Don't need register
 ];
 
 ## What register should be used as the B source?
 word d_srcB = [
 	D_icode in { IOPQ, IRMMOVQ, IMRMOVQ  } : D_rB;
-	D_icode in { IPUSHQ, IPOPQ, IPOP2, ICALL, IRET } : RRSP;
+	D_icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
 	1 : RNONE;  # Don't need register
 ];
 
@@ -226,30 +207,20 @@ word d_dstE = [
 
 ## What register should be used as the M destination?
 word d_dstM = [
-	D_icode in { IMRMOVQ, IPOP2 } : D_rA;
+	D_icode in { IMRMOVQ, IPOPQ } : D_rA;
 	1 : RNONE;  # Don't write any register
 ];
 
 ## What should be the A value?
-## Forward into decode stage for valA
+##  DO NOT MODIFY THE FOLLOWING CODE.
+## No forwarding.  valA is either valP or value from register file
 word d_valA = [
 	D_icode in { ICALL, IJXX } : D_valP; # Use incremented PC
-	d_srcA == e_dstE : e_valE;    # Forward valE from execute
-	d_srcA == M_dstM : m_valM;    # Forward valM from memory
-	d_srcA == M_dstE : M_valE;    # Forward valE from memory
-	d_srcA == W_dstM : W_valM;    # Forward valM from write back
-	d_srcA == W_dstE : W_valE;    # Forward valE from write back
 	1 : d_rvalA;  # Use value read from register file
 ];
 
-word d_valB = [
-	d_srcB == e_dstE : e_valE;    # Forward valE from execute
-	d_srcB == M_dstM : m_valM;    # Forward valM from memory
-	d_srcB == M_dstE : M_valE;    # Forward valE from memory
-	d_srcB == W_dstM : W_valM;    # Forward valM from write back
-	d_srcB == W_dstE : W_valE;    # Forward valE from write back
-	1 : d_rvalB;  # Use value read from register file
-];
+## No forwarding.  valB is value from register file
+word d_valB = d_rvalB;
 
 ################ Execute Stage #####################################
 
@@ -257,7 +228,7 @@ word d_valB = [
 word aluA = [
 	E_icode in { IRRMOVQ, IOPQ } : E_valA;
 	E_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ } : E_valC;
-	E_icode in { ICALL, IPUSHQ, IPOP2 } : -8;
+	E_icode in { ICALL, IPUSHQ } : -8;
 	E_icode in { IRET, IPOPQ } : 8;
 	# Other instructions don't need ALU
 ];
@@ -294,8 +265,8 @@ word e_dstE = [
 
 ## Select memory address
 word mem_addr = [
-	M_icode in { IRMMOVQ, IPUSHQ, ICALL, IMRMOVQ, IPOP2 } : M_valE;
-	M_icode in { IRET } : M_valA;
+	M_icode in { IRMMOVQ, IPUSHQ, ICALL, IMRMOVQ } : M_valE;
+	M_icode in { IPOPQ, IRET } : M_valA;
 	# Other instructions don't need address
 ];
 
@@ -313,31 +284,17 @@ word m_stat = [
 ];
 #/* $end pipe-m_stat-hcl */
 
-################ Write back stage ##################################
-
-## 1W: For this problem, we introduce a multiplexor that merges
-## valE and valM into a single value for writing to register port E.
-## DO NOT CHANGE THIS LOGIC
-## Merge both write back sources onto register port E 
 ## Set E port register ID
-word w_dstE = [
-	## writing from valM
-	W_dstM != RNONE : W_dstM;
-	1: W_dstE;
-];
+word w_dstE = W_dstE;
 
 ## Set E port value
-word w_valE = [
-	W_dstM != RNONE : W_valM;
-	1: W_valE;
-];
+word w_valE = W_valE;
 
-## Disable register port M
 ## Set M port register ID
-word w_dstM = RNONE;
+word w_dstM = W_dstM;
 
 ## Set M port value
-word w_valM = 0;
+word w_valM = W_valM;
 
 ## Update processor status
 word Stat = [
@@ -346,42 +303,112 @@ word Stat = [
 ];
 
 ################ Pipeline Register Control #########################
+# situation: ret
+# bool s_ret = IRET in { D_icode, E_icode, M_icode };
+#
+# situation: jxx error
+# bool s_jxx_error = (E_icode == IJXX && !e_Cnd);
+#
+# situation: data_hazard
+# bool s_data_hazard =
+#   (
+#     (
+#       d_srcA != RNONE  &&
+#       d_srcA in { e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE }
+#     ) ||
+#     (
+#       d_srcB != RNONE  &&
+#       d_srcB in { e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE }
+#     )
+#   )
+
 
 # Should I stall or inject a bubble into Pipeline Register F?
 # At most one of these can be true.
 bool F_bubble = 0;
-bool F_stall =
-	# Conditions for a load/use hazard
-	E_icode in { IMRMOVQ, IPOP2 } &&
-	 E_dstM in { d_srcA, d_srcB } ||
-	# Stalling at fetch while ret passes through pipeline
-	IRET in { D_icode, E_icode, M_icode };
+# bool F_stall =
+# 	# Modify the following to stall the update of pipeline register F
+# 	0 ||
+# 	# Stalling at fetch while ret passes through pipeline
+# 	IRET in { D_icode, E_icode, M_icode };
+bool F_stall = (
+	 (IRET in {D_icode,E_icode,M_icode}) ||
+	 (
+		(
+			d_srcA != RNONE &&
+			d_srcA in {e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE}
+		) ||
+		(
+			d_srcB != RNONE &&
+			d_srcB in { e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE}
+		)
+	 )
+) && !(E_icode == IJXX && !e_Cnd);
+
 
 # Should I stall or inject a bubble into Pipeline Register D?
 # At most one of these can be true.
-bool D_stall = 
-	# Conditions for a load/use hazard
-	E_icode in { IMRMOVQ, IPOP2 } &&
-	 E_dstM in { d_srcA, d_srcB };
+# bool D_stall = 
+# 	# Modify the following to stall the instruction in decode
+# 	0;
+bool D_stall = (
+    (
+      d_srcA != RNONE  &&
+      d_srcA in { e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE }
+    ) ||
+    (
+      d_srcB != RNONE  &&
+      d_srcB in { e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE }
+    )
+  ) &&
+  !(E_icode == IJXX && !e_Cnd);
 
 bool D_bubble =
-	# Mispredicted branch
-	(E_icode == IJXX && !e_Cnd) ||
-	# Stalling at fetch while ret passes through pipeline
-	# but not condition for a load/use hazard
-	!(E_icode in { IMRMOVQ, IPOP2 } && E_dstM in { d_srcA, d_srcB }) &&
-	# 1W: This condition will change
-	  IRET in { D_icode, E_icode, M_icode };
+#	# Mispredicted branch
+#	(E_icode == IJXX && !e_Cnd) ||
+#	# Stalling at fetch while ret passes through pipeline
+#	!(E_icode in { IMRMOVQ, IPOPQ } && E_dstM in { d_srcA, d_srcB }) &&
+#	# but not condition for a generate/use hazard
+#	!0 &&
+#	  IRET in { D_icode, E_icode, M_icode };
+ 	(E_icode == IJXX && !e_Cnd) ||
+  	(
+    	!(
+      		(
+        	d_srcA != RNONE  &&
+        	d_srcA in { e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE }
+      	) ||
+      	(
+        	d_srcB != RNONE  &&
+        	d_srcB in { e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE }
+      	)
+    ) &&
+    (IRET in { D_icode, E_icode, M_icode })
+  );
+
 
 # Should I stall or inject a bubble into Pipeline Register E?
 # At most one of these can be true.
+# bool E_stalll = 0
+# bool E_bubble = s_jxx_error
 bool E_stall = 0;
 bool E_bubble =
-	# Mispredicted branch
-	(E_icode == IJXX && !e_Cnd) ||
-	# Conditions for a load/use hazard
-	E_icode in { IMRMOVQ, IPOP2 } &&
-	 E_dstM in { d_srcA, d_srcB};
+#	# Mispredicted branch
+#	(E_icode == IJXX && !e_Cnd) ||
+#	# Modify the following to inject bubble into the execute stage
+#	0;
+   (E_icode == IJXX && !e_Cnd) ||
+   (
+    	(
+      		d_srcA != RNONE  &&
+      		d_srcA in { e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE }
+    	) ||
+    	(
+      		d_srcB != RNONE  &&
+      		d_srcB in { e_dstE, E_dstM, M_dstM, M_dstE, W_dstM, W_dstE }
+    	)
+  );
+
 
 # Should I stall or inject a bubble into Pipeline Register M?
 # At most one of these can be true.

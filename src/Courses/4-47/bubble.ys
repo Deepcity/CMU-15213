@@ -1,0 +1,54 @@
+#/* bubble-sort-pointer.ys */
+.pos 0
+	irmovq stack, %rsp
+	call main
+	halt
+
+# Array of 4 elements
+.align 8
+data:
+  .quad 0x0000000000000004
+  .quad 0x0000000000000003
+  .quad 0x0000000000000002
+data_end:
+  .quad 0x0000000000000001
+
+main:
+  irmovq data,%rdi      # 设定数组开头指针
+	irmovq data_end,%rsi  # 设定数组结尾指针
+	call ysBubbleP
+	ret
+
+# long ys_bubble_p(long *data, long *end)
+# data in %rdi, end in %rsi
+ysBubbleP:
+  jmp L2
+L4:                   # 应该是第二层循环的起始
+  mrmovq 8(%rax), %r9 # 设置r9为 *(rax+1)
+  mrmovq (%rax), %r10 # 设置r10为 *rax
+  rrmovq %r9, %r8     # r8 暂存
+  subq %r10, %r8      # 比较大小
+  jge L3              
+  rmmovq %r10, 8(%rax)# 交换数值
+  rmmovq %r9, (%rax)
+L3:
+  irmovq $8, %r8       # 递增rax
+  addq %r8, %rax
+  jmp L5
+L6:
+  rrmovq %rdi, %rax # 保存数组开头
+L5:
+  rrmovq %rsi, %r8  # 重设r8为数组结尾
+  subq %rax, %r8    # r8重新设置为数组长度
+  jg L4             # 满足小于外层循环rsi的大小条件
+  irmovq $8, %r8
+  subq %r8, %rsi
+L2: # Start of Bubble 外层循环起始
+  rrmovq %rsi, %r8  # 数组结尾指针设给r8
+  subq %rdi, %r8    # r8为数组长度
+  jg L6             # 这里是判断数组大小是否为0
+	ret
+# 可见rax的最终大小数组开头地址
+
+.pos 0x200
+stack:
