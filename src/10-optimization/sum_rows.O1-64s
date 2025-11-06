@@ -1,0 +1,86 @@
+	.file	"sum_rows.c"
+	.text
+	.globl	sum_rows1
+	.type	sum_rows1, @function
+sum_rows1:
+.LFB0:
+	.cfi_startproc
+	endbr64
+	testq	%rdx, %rdx
+	jle	.L1
+	movq	%rsi, %r8
+	leaq	0(,%rdx,8), %r9
+	leaq	(%rdi,%r9), %rcx
+	leaq	(%rsi,%r9), %rdi
+	negq	%rdx
+	leaq	0(,%rdx,8), %rsi
+.L4:
+	movq	%r8, %rdx
+	movq	$0x000000000, (%r8)
+	leaq	(%rcx,%rsi), %rax
+.L3:
+	movsd	(%rdx), %xmm0
+	addsd	(%rax), %xmm0
+	movsd	%xmm0, (%rdx)
+	addq	$8, %rax
+	cmpq	%rcx, %rax
+	jne	.L3
+	addq	$8, %r8
+	addq	%r9, %rcx
+	cmpq	%rdi, %r8
+	jne	.L4
+.L1:
+	ret
+	.cfi_endproc
+.LFE0:
+	.size	sum_rows1, .-sum_rows1
+	.globl	sum_rows2
+	.type	sum_rows2, @function
+sum_rows2:
+.LFB1:
+	.cfi_startproc
+	endbr64
+	testq	%rdx, %rdx
+	jle	.L7
+	movq	%rsi, %r8
+	leaq	0(,%rdx,8), %r9
+	leaq	(%rdi,%r9), %rcx
+	addq	%r9, %rsi
+	negq	%rdx
+	salq	$3, %rdx
+.L9:
+	leaq	(%rcx,%rdx), %rax
+	pxor	%xmm0, %xmm0
+.L10:
+	addsd	(%rax), %xmm0
+	addq	$8, %rax
+	cmpq	%rcx, %rax
+	jne	.L10
+	movsd	%xmm0, (%r8)
+	addq	$8, %r8
+	addq	%r9, %rcx
+	cmpq	%rsi, %r8
+	jne	.L9
+.L7:
+	ret
+	.cfi_endproc
+.LFE1:
+	.size	sum_rows2, .-sum_rows2
+	.ident	"GCC: (Ubuntu 11.2.0-19ubuntu1) 11.2.0"
+	.section	.note.GNU-stack,"",@progbits
+	.section	.note.gnu.property,"a"
+	.align 8
+	.long	1f - 0f
+	.long	4f - 1f
+	.long	5
+0:
+	.string	"GNU"
+1:
+	.align 8
+	.long	0xc0000002
+	.long	3f - 2f
+2:
+	.long	0x3
+3:
+	.align 8
+4:
