@@ -1,0 +1,254 @@
+CS213,Fall2002
+LabAssignmentL5: WritingYourOwnUnixShell
+Assigned: Oct.24,Due: Thu.,Oct.31,11:59PM
+Harry Bovik( bovik@cs.cmu.edu )is the lead person for this assignment.
+Introduction
+The purpose of this assignment is to become more familiar wit h the concepts of process control and sig-
+nalling. You’ll dothis by writing asimple Unixshell progra m that supports job control.
+Logistics
+Youmaywork inagroup of upto twopeople insolving theproble ms for this assignment. Theonly “hand-
+in” will be electronic. Any clariﬁcations and revisions to t he assignment will be posted on the course Web
+page.
+Hand Out Instructions
+SITE-SPECIFIC:Insert a paragraph here that explains how th einstructor will handout
+theshlab-handout.tar ﬁleto thestudents. Here are thedirections weuseat CMU.
+Start by copying the ﬁle shlab-handout.tar to the protected directory (the lab directory ) in which
+you plan to doyour work. Thendo the following:
+•Type thecommand tar xvf shlab-handout.tar toexpand the tarﬁle.
+•Type thecommand maketocompile and link sometest routines.
+•Type your team member names and Andrew IDsin the header comme nt at the top of tsh.c.
+Looking at the tsh.c(tiny shell) ﬁle, you will see that it contains a functional skeleton of a simple Unix
+shell. Tohelp youget started, wehave already implemented t helessinteresting functions. Your assignment
+1
+
+is to complete the remaining empty functions listed below. A s a sanity check for you, we’ve listed the
+approximate number of lines of code for each of these functio ns in our reference solution (which includes
+lots of comments).
+•eval: Main routine that parses and interprets the command line. [ 70 lines]
+•builtin cmd: Recognizes and interprets the built-in commands: quit,fg,bg, andjobs. [25
+lines]
+•dobgfg: Implements the bgandfgbuilt-in commands. [50 lines]
+•waitfg: Waits for aforeground job tocomplete. [20 lines]
+•sigchld handler : Catches SIGCHILDsignals. 80 lines]
+•sigint handler : Catches SIGINT( ctrl-c)signals. [15 lines]
+•sigtstp handler : Catches SIGTSTP( ctrl-z)signals. [15 lines]
+Each time you modify your tsh.cﬁle, type maketo recompile it. To run your shell, type tshto the
+command line:
+unix> ./tsh
+tsh>[typecommandstoyourshellhere]
+General Overviewof Unix Shells
+Ashellis an interactive command-line interpreter that runs progr ams on behalf of the user. A shell repeat-
+edly prints a prompt, waits for a command line onstdin,and then carries out some action, as directed by
+the contents of the command line.
+The command line is a sequence of ASCII text words delimited b y whitespace. The ﬁrst word in the
+commandlineiseitherthenameofabuilt-incommandorthepa thnameofanexecutableﬁle. Theremaining
+words arecommand-line arguments. Ifthe ﬁrst wordisabuilt -in command, theshell immediately executes
+the command in the current process. Otherwise, the word is as sumed to be the pathname of an executable
+program. In this case, the shell forks a child process, then l oads and runs the program in the context of the
+child. The child processes created as a result of interpreti ng a single command line are known collectively
+asajob. Ingeneral, ajob can consist of multiple child processes co nnected by Unix pipes.
+If the command line ends with an ampersand ” &”, then the job runs in the background , which means that
+the shell does not wait for the job to terminate before printi ng the prompt and awaiting the next command
+line. Otherwise, the job runs in the foreground , which means that the shell waits for the job to terminate
+before awaiting the next command line. Thus, at any point in t ime, at most one job can be running in the
+foreground. However, anarbitrary number of jobs can run int he background.
+For example, typing the command line
+tsh>jobs
+2
+
+causes the shell to execute the built-in jobscommand. Typing the command line
+tsh>/bin/ls-l-d
+runs the lsprogram in the foreground. By convention, the shell ensures that when the program begins
+executing its main routine
+int main(int argc, char *argv[])
+theargcandargvarguments have thefollowing values:
+•argc == 3 ,
+•argv[0] == ``/bin/ls'' ,
+•argv[1]== ``-l'' ,
+•argv[2]== ``-d'' .
+Alternatively, typing the command line
+tsh>/bin/ls-l-d &
+runs the lsprogram inthe background.
+Unixshellssupport thenotionof jobcontrol , whichallowsuserstomovejobsbackandforthbetweenback-
+ground and foreground, and to change the process state (runn ing, stopped, or terminated) of the processes
+inajob. Typing ctrl-c causesaSIGINTsignal tobedeliveredtoeachprocess inthef oreground job. The
+default action for SIGINT is to terminate the process. Simil arly, typing ctrl-z causes a SIGTSTPsignal
+to be delivered to each process in the foreground job. The def ault action for SIGTSTPis to place a process
+in the stopped state, where it remains until it is awakened by the receipt of a SIGCONTsignal. Unix shells
+also provide various built-in commands that support job con trol. Forexample:
+•jobs: List the running and stopped background jobs.
+•bg <job> : Change astopped background job toa running background job .
+•fg <job> : Change astopped or running background job toa running in th eforeground.
+•kill <job> : Terminate ajob.
+ThetshSpeciﬁcation
+Yourtshshell should have the following features:
+•Theprompt should bethe string “ tsh>”.
+3
+
+•The command line typed by the user should consist of a nameand zero or morearguments, all sepa-
+rated by one or more spaces. If nameisa built-in command, then tshshould handle it immediately
+and wait for the next command line. Otherwise, tshshould assume that nameis the path of an
+executable ﬁle, which it loads and runs in the context of an in itial child process (In this context, the
+termjobrefers to this initial child process).
+•tshneed not support pipes ( |) or I/O redirection ( <and>).
+•Typing ctrl-c (ctrl-z)should cause a SIGINT(SIGTSTP) signal to be sent to the curr ent fore-
+ground job, aswell asany descendents of that job (e.g., any c hild processes that it forked). If there is
+no foreground job, then the signal should have no effect.
+•If the command line ends with an ampersand &, thentshshould run the job in the background.
+Otherwise, it should run the jobin the foreground.
+•Each job can be identiﬁed by either a process ID (PID) or a job I D (JID), which is a positive integer
+assigned by tsh. JIDs should be denoted on the command line bythe preﬁx ’ %’. For example, “ %5”
+denotes JID 5, and “ 5” denotes PID 5. (We have provided you with all of the routines you need for
+manipulating the job list.)
+•tshshould support the following built-in commands:
+–Thequitcommand terminates the shell.
+–Thejobscommand lists all background jobs.
+–Thebg <job> command restarts <job>bysending itaSIGCONTsignal, andthen runsit in
+the background. The <job>argument can be either aPID or aJID.
+–Thefg <job> command restarts <job>bysending itaSIGCONTsignal, andthen runsit in
+the foreground. The <job>argument canbe either aPIDor a JID.
+•tshshould reap all of its zombie children. If any job terminates because it receives a signal that
+it didn’t catch, then tshshould recognize this event and print a message with the job’ s PID and a
+description of the offending signal.
+Checking Your Work
+Wehave provided some tools tohelp you check your work.
+Referencesolution. TheLinuxexecutable tshref isthereferencesolutionfortheshell. Runthisprogram
+toresolve anyquestions youhaveabout howyour shell should behave.Yourshell should emitoutput that is
+identical tothe reference solution (except for PIDs,of course, which change from run torun).
+Shelldriver. Thesdriver.pl programexecutesashellasachildprocess,sendsitcommand sandsignals
+asdirected by a trace ﬁle, and captures and displays the output from the shell.
+Usethe -hargument toﬁndout the usage of sdriver.pl :
+4
+
+unix> ./sdriver.pl -h
+Usage: sdriver.pl [-hv] -t <trace> -s <shellprog> -a <args>
+Options:
+-h Print this message
+-v Be more verbose
+-t <trace> Trace file
+-s <shell> Shell program to test
+-a <args> Shell arguments
+-g Generate output for autograder
+Wehavealsoprovided16traceﬁles( trace{01-16}.txt)thatyouwilluseinconjunction withtheshell
+driver to test the correctness of your shell. The lower-numb ered trace ﬁles do very simple tests, and the
+higher-numbered tests do more complicated tests.
+Youcan run the shell driver onyour shell using trace ﬁle trace01.txt (for instance) bytyping:
+unix>./sdriver.pl-t trace01.txt-s./tsh-a"-p"
+(the-a "-p" argument tells your shell not to emit aprompt), or
+unix>maketest01
+Similarly, tocompareyour result withthereference shell, youcanrunthetracedriver onthereference shell
+by typing:
+unix>./sdriver.pl-t trace01.txt-s./tshref-a "-p"
+or
+unix>makertest01
+For your reference, tshref.out gives the output of the reference solution on all races. This might be
+more convenient for you than manually running the shell driv er on all trace ﬁles.
+Theneat thing about thetraceﬁlesisthat theygenerate thes ameoutput youwouldhavegotten hadyou run
+your shell interactively (except for an initial comment tha t identiﬁes the trace). For example:
+bass> make test15
+./sdriver.pl -t trace15.txt -s ./tsh -a "-p"
+#
+# trace15.txt - Putting it all together
+#
+tsh> ./bogus
+./bogus: Command not found.
+tsh> ./myspin 10
+Job (9721) terminated by signal 2
+tsh> ./myspin 3 &
+[1] (9723) ./myspin 3 &
+tsh> ./myspin 4 &
+5
+
+[2] (9725) ./myspin 4 &
+tsh> jobs
+[1] (9723) Running ./myspin 3 &
+[2] (9725) Running ./myspin 4 &
+tsh> fg %1
+Job [1] (9723) stopped by signal 20
+tsh> jobs
+[1] (9723) Stopped ./myspin 3 &
+[2] (9725) Running ./myspin 4 &
+tsh> bg %3
+%3: No such job
+tsh> bg %1
+[1] (9723) ./myspin 3 &
+tsh> jobs
+[1] (9723) Running ./myspin 3 &
+[2] (9725) Running ./myspin 4 &
+tsh> fg %1
+tsh> quit
+bass>
+Hints
+•Read every wordof Chapter 8 (Exceptional Control Flow) in yo ur textbook.
+•Use the trace ﬁles to guide the development of your shell. Sta rting with trace01.txt , make
+sure that your shell produces the identical output as the reference shell. Then move on to trace ﬁle
+trace02.txt ,and soon.
+•Thewaitpid ,kill,fork,execve,setpgid ,andsigprocmask functions willcomeinvery
+handy. The WUNTRACEDand WNOHANGoptions to waitpid will also beuseful.
+•Whenyouimplement your signal handlers, besuretosend SIGINT andSIGTSTP signals totheen-
+tireforeground processgroup, using” -pid”insteadof” pid”intheargument tothe killfunction.
+Thesdriver.pl program tests for this error.
+•One of the tricky parts of the assignment is deciding on the al location of work between the waitfg
+andsigchld handler functions. Werecommend the following approach:
+–Inwaitfg,use abusy loop around the sleepfunction.
+–Insigchld handler ,useexactly one call to waitpid .
+Whileothersolutionsarepossible,suchascalling waitpid inbothwaitfg andsigchld handler ,
+these can bevery confusing. It issimpler todo all reaping in the handler.
+•Ineval, the parent must use sigprocmask to block SIGCHLD signals before it forks the child,
+and then unblock these signals, again using sigprocmask after it adds the child to the job list by
+callingaddjob. Since children inherit the blocked vectors of their parents, thechild must besure
+to then unblock SIGCHLD signals before it execs thenew program.
+6
+
+Theparentneedstoblockthe SIGCHLD signalsinthiswayinordertoavoidtheracecondition where
+the child is reaped by sigchld handler (and thus removed from the job list) beforethe parent
+callsaddjob.
+•Programs such as more,less,vi, andemacsdo strange things with the terminal settings. Don’t
+run these programs from your shell. Stick with simple text-b ased programs such as /bin/ls ,
+/bin/ps ,and/bin/echo .
+•WhenyourunyourshellfromthestandardUnixshell,yourshe llisrunningintheforeground process
+group. If your shell then creates a child process, by default that child will also be a member of the
+foreground process group. Since typing ctrl-c sends a SIGINTtoevery process in the foreground
+group, typing ctrl-c will send a SIGINT to your shell, as well as to every process th at your shell
+created, which obviously isn’t correct.
+Here is the workaround: After the fork, but before the execve, the child process should call
+setpgid(0, 0) , which puts the child in a new process group whose group ID is i dentical to the
+child’s PID. This ensures that there will be only one process , your shell, in the foreground process
+group. When you type ctrl-c, the shell should catch the resulting SIGINT and then forwar d it
+to the appropriate foreground job (or more precisely, the pr ocess group that contains the foreground
+job).
+Evaluation
+Your score will be computed out of a maximum of 90 points based onthe following distribution:
+80Correctness: 16 trace ﬁlesat 5points each.
+10Style points. We expect you to have good comments (5 pts) and t o check the return value of EVERY
+system call (5pts).
+Your solution shell will be tested for correctness on a Linux machine, using the same shell driver and trace
+ﬁles that were included in your lab directory. Your shell sho uld produce identical output on these traces as
+the reference shell, withonly twoexceptions:
+•ThePIDscan (and will) bedifferent.
+•The output of the /bin/ps commands in trace11.txt ,trace12.txt , andtrace13.txt
+will be different from run to run. However, the running state s of any mysplit processes in the
+output of the /bin/ps command should beidentical.
+Hand InInstructions
+SITE-SPECIFIC:Insert a paragraph here that explains how th estudentsshould handin
+theirtsh.cﬁles. Here are thedirections weuseat CMU.
+7
+
+•Make sure you have included your names and Andrew IDsinthe he ader comment of tsh.c.
+•Create ateam nameof the form:
+–“ID”whereIDisyour Andrew ID,if you are working alone, or
+–“ID1+ID2” whereID1is the Andrew ID of the ﬁrst team member and ID2is the Andrew ID
+of the second team member.
+Weneed you to create your team names in this wayso that wecana utograde your assignments.
+•Tohand in your tsh.cﬁle, type:
+make handin TEAM=teamname
+whereteamname is theteam namedescribed above.
+•After the handin, if you discover amistake and want to submit arevised copy, type
+make handin TEAM=teamname VERSION=2
+Keep incrementing the version number with each submission.
+•You should verify your handin bylooking in
+/afs/cs.cmu.edu/academic/class/15213-f01/L5/handin
+You have list and insert permissions in this directory, but n oread or write permissions.
+Good luck!
+8
+

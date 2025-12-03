@@ -1,0 +1,105 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_EXCMD	mixed	/number, pattern, mixed, or combineV2/
+!_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
+!_TAG_PROC_CWD	/home/ubuntu/learnning_project/CMU-15213/src/shlab-handout/	//
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	5.9.0	//
+BG	tsh.c	/^#define BG /;"	d	file:
+CC	Makefile	/^CC = gcc$/;"	m
+CFLAGS	Makefile	/^CFLAGS = -Wall -O2$/;"	m
+DRIVER	Makefile	/^DRIVER = .\/sdriver.pl$/;"	m
+FG	tsh.c	/^#define FG /;"	d	file:
+FILES	Makefile	/^FILES = $(TSH) .\/myspin .\/mysplit .\/mystop .\/myint$/;"	m
+HANDINDIR	Makefile	/^HANDINDIR = \/afs\/cs\/academic\/class\/15213-f02\/L5\/handin$/;"	m
+MAXARGS	tsh.c	/^#define MAXARGS /;"	d	file:
+MAXJID	tsh.c	/^#define MAXJID /;"	d	file:
+MAXJOBS	tsh.c	/^#define MAXJOBS /;"	d	file:
+MAXLINE	tsh.c	/^#define MAXLINE /;"	d	file:
+ST	tsh.c	/^#define ST /;"	d	file:
+Signal	tsh.c	/^handler_t *Signal(int signum, handler_t *handler) $/;"	f	typeref:typename:handler_t *
+TEAM	Makefile	/^TEAM = NOBODY$/;"	m
+TSH	Makefile	/^TSH = .\/tsh$/;"	m
+TSHARGS	Makefile	/^TSHARGS = "-p"$/;"	m
+TSHREF	Makefile	/^TSHREF = .\/tshref$/;"	m
+UNDEF	tsh.c	/^#define UNDEF /;"	d	file:
+VERSION	Makefile	/^VERSION = 1$/;"	m
+addjob	tsh.c	/^int addjob(struct job_t *jobs, pid_t pid, int state, char *cmdline) $/;"	f	typeref:typename:int
+all	Makefile	/^all: $(FILES)$/;"	t
+app_error	tsh.c	/^void app_error(char *msg)$/;"	f	typeref:typename:void
+builtin_cmd	tsh.c	/^int builtin_cmd(char **argv) $/;"	f	typeref:typename:int
+clean	Makefile	/^clean:$/;"	t
+clearjob	tsh.c	/^void clearjob(struct job_t *job) {$/;"	f	typeref:typename:void
+cmdline	tsh.c	/^    char cmdline[MAXLINE];  \/* command line *\/$/;"	m	struct:job_t	typeref:typename:char[]	file:
+deletejob	tsh.c	/^int deletejob(struct job_t *jobs, pid_t pid) $/;"	f	typeref:typename:int
+do_bgfg	tsh.c	/^void do_bgfg(char **argv) $/;"	f	typeref:typename:void
+eval	tsh.c	/^void eval(char *cmdline) $/;"	f	typeref:typename:void
+exec_cmd	tsh.c	/^void exec_cmd(char **argv, int bg){$/;"	f	typeref:typename:void
+fgpid	tsh.c	/^pid_t fgpid(struct job_t *jobs) {$/;"	f	typeref:typename:pid_t
+getjobjid	tsh.c	/^struct job_t *getjobjid(struct job_t *jobs, int jid) $/;"	f	typeref:struct:job_t *
+getjobpid	tsh.c	/^struct job_t *getjobpid(struct job_t *jobs, pid_t pid) {$/;"	f	typeref:struct:job_t *
+handin	Makefile	/^handin:$/;"	t
+handler_t	tsh.c	/^typedef void handler_t(int);$/;"	t	typeref:typename:void ()(int)	file:
+initjobs	tsh.c	/^void initjobs(struct job_t *jobs) {$/;"	f	typeref:typename:void
+jid	tsh.c	/^    int jid;                \/* job ID [1, 2, ...] *\/$/;"	m	struct:job_t	typeref:typename:int	file:
+job_t	tsh.c	/^struct job_t {              \/* The job struct *\/$/;"	s	file:
+jobs	tsh.c	/^struct job_t jobs[MAXJOBS]; \/* The job list *\/$/;"	v	typeref:struct:job_t[]
+listjobs	tsh.c	/^void listjobs(struct job_t *jobs) $/;"	f	typeref:typename:void
+main	myint.c	/^int main(int argc, char **argv) $/;"	f	typeref:typename:int
+main	myspin.c	/^int main(int argc, char **argv) $/;"	f	typeref:typename:int
+main	mysplit.c	/^int main(int argc, char **argv) $/;"	f	typeref:typename:int
+main	mystop.c	/^int main(int argc, char **argv) $/;"	f	typeref:typename:int
+main	tsh.c	/^int main(int argc, char **argv) $/;"	f	typeref:typename:int
+maxjid	tsh.c	/^int maxjid(struct job_t *jobs) $/;"	f	typeref:typename:int
+nextjid	tsh.c	/^int nextjid = 1;            \/* next job ID to allocate *\/$/;"	v	typeref:typename:int
+parseline	tsh.c	/^int parseline(const char *cmdline, char **argv) $/;"	f	typeref:typename:int
+pid	tsh.c	/^    pid_t pid;              \/* job PID *\/$/;"	m	struct:job_t	typeref:typename:pid_t	file:
+pid2jid	tsh.c	/^int pid2jid(pid_t pid) $/;"	f	typeref:typename:int
+prompt	tsh.c	/^char prompt[] = "tsh> ";    \/* command line prompt (DO NOT CHANGE) *\/$/;"	v	typeref:typename:char[]
+rtest01	Makefile	/^rtest01:$/;"	t
+rtest02	Makefile	/^rtest02:$/;"	t
+rtest03	Makefile	/^rtest03:$/;"	t
+rtest04	Makefile	/^rtest04:$/;"	t
+rtest05	Makefile	/^rtest05:$/;"	t
+rtest06	Makefile	/^rtest06:$/;"	t
+rtest07	Makefile	/^rtest07:$/;"	t
+rtest08	Makefile	/^rtest08:$/;"	t
+rtest09	Makefile	/^rtest09:$/;"	t
+rtest10	Makefile	/^rtest10:$/;"	t
+rtest11	Makefile	/^rtest11:$/;"	t
+rtest12	Makefile	/^rtest12:$/;"	t
+rtest13	Makefile	/^rtest13:$/;"	t
+rtest14	Makefile	/^rtest14:$/;"	t
+rtest15	Makefile	/^rtest15:$/;"	t
+rtest16	Makefile	/^rtest16:$/;"	t
+sbuf	tsh.c	/^char sbuf[MAXLINE];         \/* for composing sprintf messages *\/$/;"	v	typeref:typename:char[]
+sigchld_handler	tsh.c	/^void sigchld_handler(int sig) $/;"	f	typeref:typename:void
+sigint_handler	tsh.c	/^void sigint_handler(int sig) $/;"	f	typeref:typename:void
+sigquit_handler	tsh.c	/^void sigquit_handler(int sig) $/;"	f	typeref:typename:void
+sigtstp_handler	tsh.c	/^void sigtstp_handler(int sig) $/;"	f	typeref:typename:void
+state	tsh.c	/^    int state;              \/* UNDEF, BG, FG, or ST *\/$/;"	m	struct:job_t	typeref:typename:int	file:
+test01	Makefile	/^test01:$/;"	t
+test02	Makefile	/^test02:$/;"	t
+test03	Makefile	/^test03:$/;"	t
+test04	Makefile	/^test04:$/;"	t
+test05	Makefile	/^test05:$/;"	t
+test06	Makefile	/^test06:$/;"	t
+test07	Makefile	/^test07:$/;"	t
+test08	Makefile	/^test08:$/;"	t
+test09	Makefile	/^test09:$/;"	t
+test10	Makefile	/^test10:$/;"	t
+test11	Makefile	/^test11:$/;"	t
+test12	Makefile	/^test12:$/;"	t
+test13	Makefile	/^test13:$/;"	t
+test14	Makefile	/^test14:$/;"	t
+test15	Makefile	/^test15:$/;"	t
+test16	Makefile	/^test16:$/;"	t
+unix_error	tsh.c	/^void unix_error(char *msg)$/;"	f	typeref:typename:void
+usage	sdriver.pl	/^sub usage $/;"	s
+usage	tsh.c	/^void usage(void) $/;"	f	typeref:typename:void
+verbose	tsh.c	/^int verbose = 0;            \/* if true, print additional output *\/$/;"	v	typeref:typename:int
+waitfg	tsh.c	/^void waitfg(pid_t pid)$/;"	f	typeref:typename:void
