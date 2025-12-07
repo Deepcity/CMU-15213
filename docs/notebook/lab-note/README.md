@@ -11,5 +11,8 @@
 1. [datalab](./datalog.md)
 2. [bomb](./bomblog.md)
 3. [attack](./attacklog.md)
+4. [architecture](./architecturelog.md)
+5. [cache](./cachelab.md)
+6. [shell](./shelllab.md)
 
 ## REF

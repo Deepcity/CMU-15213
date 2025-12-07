@@ -2,6 +2,10 @@
 
 ***MOSTLY LEARNED***
 
+## Declaration
+
+本文使用了 AIGC 来提高效率，其中可能存在谬误，我已尽力检查并校对，但仍不保证完全准确，欢迎指正。
+
 ## 核心脉络
 
 - 异常控制流（ECF）贯穿系统多个层次：异常、进程上下文切换、信号、以及应用级的非局部跳转（setjmp/longjmp）。
@@ -59,7 +63,7 @@ Shell 运行前台/后台作业，用户通过键盘（如 Ctrl-C/Ctrl-Z）对**
 
 ## demo
 
-
+如果看不懂，在本仓库[CMU-15213/src at main · Deepcity/CMU-15213](https://github.com/Deepcity/CMU-15213/tree/main/src)中有一个ecf_signals_demo，由chatgpt编写，可以看看
 
 ## REF
 

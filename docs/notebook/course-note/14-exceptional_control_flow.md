@@ -2,6 +2,10 @@
 
 ***MOSTLY LREANED***
 
+## Declaration
+
+本文使用了 AIGC 来提高效率，其中可能存在谬误，我已尽力检查并校对，但仍不保证完全准确，欢迎指正。
+
 ## 章节脉络
 
 - 覆盖四块：异常控制流总体概念、异常（exceptions）、进程（processes）、进程控制（创建/等待/执行/退出）。
@@ -39,6 +43,10 @@
 - **等待/回收**：父进程用 `wait`/`waitpid` 获取子进程结束状态并**回收（reap）**资源；否则子进程会成为“僵尸（defunct）”，直到被回收或被 init(1) 接管回收。
 - **退出**：`exit(status)` 或从 `main` 返回导致进程终止；某些信号的默认动作也会终止进程。
 - **健壮性**：系统调用出错通常返回 -1 并设置 `errno`，需检查每次系统调用的返回值（示例给出 `fork` 错误处理与封装）。
+
+## demo
+
+如果看不懂，在本仓库[CMU-15213/src at main · Deepcity/CMU-15213](https://github.com/Deepcity/CMU-15213/tree/main/src)中有一个ecf_demo，由chatgpt编写，可以看看
 
 ## REF
 
