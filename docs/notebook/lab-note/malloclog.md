@@ -1,41 +1,526 @@
-/*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
- * 
- * In this naive approach, a block is allocated by simply incrementing
- * the brk pointer.  A block is pure payload. There are no headers or
- * footers.  Blocks are never coalesced or reused. Realloc is
- * implemented directly using mm_malloc and mm_free.
- *
- * NOTE TO STUDENTS: Replace this header comment with your own header
- * comment that gives a high level description of your solution.
+# Malloc Lab
+
+## Declaration
+
+本文使用了 AIGC 来提高效率，其中可能存在谬误，我已尽力检查并校对，但仍不保证完全准确，欢迎指正。
+
+这个Lab的所有工作都在`mm.c`文件中完成，你需要实现一个动态内存分配器，包括四个函数`mm_init()`, `mm_malloc()`, `mm_free()`, `mm_realloc()`以及相关辅助函数。你需要确保你的实现既高效又能有效地利用内存。
+
+## Steps
+
+### Start Version
+
+CSAPP实际上给出了一个基本可运行的版本，你可以参考它来实现初始化堆空间的功能。
+```c
+/* 
+ * mm_init - initialize the malloc package.
  */
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <unistd.h>
-#include <string.h>
+int mm_init(void)
+{
+    return 0;
+}
 
-#include "mm.h"
-#include "memlib.h"
+/* 
+ * mm_malloc - Allocate a block by incrementing the brk pointer.
+ *     Always allocate a block whose size is a multiple of the alignment.
+ */
+void *mm_malloc(size_t size)
+{
+    int newsize = ALIGN(size + SIZE_T_SIZE);
+    void *p = mem_sbrk(newsize);
+    if (p == (void *)-1)
+	return NULL;
+    else {
+        *(size_t *)p = size;
+        return (void *)((char *)p + SIZE_T_SIZE);
+    }
+}
 
-/*********************************************************
- * NOTE TO STUDENTS: Before you do anything else, please
- * provide your team information in the following struct.
- ********************************************************/
-team_t team = {
-    /* Team name */
-    "ateam",
-    /* First member's full name */
-    "Sun Gang",
-    /* First member's email address */
-    "sungang@stu.xmu.edu.cn",
-    /* Second member's full name (leave blank if none) */
-    "",
-    /* Second member's email address (leave blank if none) */
-    ""
-};
+/*
+ * mm_free - Freeing a block does nothing.
+ */
+void mm_free(void *ptr)
+{
+}
 
+/*
+ * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
+ */
+void *mm_realloc(void *ptr, size_t size)
+{
+    void *oldptr = ptr;
+    void *newptr;
+    size_t copySize;
+    
+    newptr = mm_malloc(size);
+    if (newptr == NULL)
+      return NULL;
+    copySize = *(size_t *)((char *)oldptr - SIZE_T_SIZE);
+    if (size < copySize)
+      copySize = size;
+    memcpy(newptr, oldptr, copySize);
+    mm_free(oldptr);
+    return newptr;
+}
+```
+
+实际上这里就只有对齐与堆空间的初始化，其他函数都没有实现任何功能。
+
+#### 测试结果
+
+```sh
+(base) ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Malloc-Lab$ ./mdriver  -V -t traces/
+Team Name:ateam
+Member 1 :Harry Bovik:bovik@cs.cmu.edu
+Using default tracefiles in traces/
+Measuring performance with gettimeofday().
+
+Testing mm malloc
+Reading tracefile: amptjp-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: cccp-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: cp-decl-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: expr-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: coalescing-bal.rep
+ERROR: mem_sbrk failed. Ran out of memory...
+Checking mm_malloc for correctness, ERROR [trace 4, line 7673]: mm_malloc failed.
+Reading tracefile: random-bal.rep
+ERROR: mem_sbrk failed. Ran out of memory...
+Checking mm_malloc for correctness, ERROR [trace 5, line 1662]: mm_malloc failed.
+Reading tracefile: random2-bal.rep
+ERROR: mem_sbrk failed. Ran out of memory...
+Checking mm_malloc for correctness, ERROR [trace 6, line 1780]: mm_malloc failed.
+Reading tracefile: binary-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: binary2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: realloc-bal.rep
+ERROR: mem_sbrk failed. Ran out of memory...
+Checking mm_malloc for correctness, ERROR [trace 9, line 1705]: mm_realloc failed.
+Reading tracefile: realloc2-bal.rep
+ERROR: mem_sbrk failed. Ran out of memory...
+Checking mm_malloc for correctness, ERROR [trace 10, line 6562]: mm_realloc failed.
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   23%    5694  0.000042134610
+ 1       yes   19%    5848  0.000040146566
+ 2       yes   30%    6648  0.000047140550
+ 3       yes   40%    5380  0.000035153276
+ 4        no     -       -         -     -
+ 5        no     -       -         -     -
+ 6        no     -       -         -     -
+ 7       yes   55%   12000  0.000093129590
+ 8       yes   51%   24000  0.000114209790
+ 9        no     -       -         -     -
+10        no     -       -         -     -
+Total            -       -         -     -
+```
+
+有些地方会出现valid无效的情况，这是因为整体的实现过程太过简单,没有考虑到内存的复用与释放。
+
+
+- **util**指标的计算公式为：
+$$
+\text{util} = \frac{\text{测试过程中某个时刻用户实际请求的总 payload 大小最大值}}{\text{你向堆申请的总空间大小（通过 mem_sbrk）}}
+$$
+
+- **ops**指标表示在该 trace 中，malloc/free/realloc 操作的总次数。
+
+- **secs**指标表示该 trace 中，所有 malloc/free/realloc 操作所花费的总时间，单位为秒。
+
+- **Kops**指标表示每千次操作所花费的时间，计算公式为：
+$$
+Kops=\frac{secs}{ops}÷1000
+$$
+
+### Implicit Free List
+
+```
+| header (size + alloc_bit) | payload ...           | footer (size + alloc_bit) |
+^                            ^
+bp 指向这里                  HDRP(bp) / FTRP(bp)
+```
+
+常见宏定义
+
+```c
+#define WSIZE       4             // header/footer 是 4 字节
+#define DSIZE       8             // 双字大小
+#define CHUNKSIZE  (1<<12)        // 一次扩展堆的默认大小
+
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+
+// 把 size 和 alloc 位打包进一个字
+#define PACK(size, alloc)  ((size) | (alloc))
+
+// 从地址 p 中读写一个字
+#define GET(p)       (*(unsigned int *)(p))
+#define PUT(p, val)  (*(unsigned int *)(p) = (val))
+
+// 从 header/footer 中取 size 和 alloc 位
+#define GET_SIZE(p)  (GET(p) & ~0x7)
+#define GET_ALLOC(p) (GET(p) & 0x1)
+
+// 给定块指针 bp，计算 header 和 footer 指针
+#define HDRP(bp) ((char *)(bp) - WSIZE)
+#define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
+
+// 下一个、上一个块指针
+#define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
+#define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
+```
+
+`mm_init`函数中需要初始化堆空间，创建初始空闲块和结尾块。
+
+```c
+static char *heap_listp = NULL;
+
+int mm_init(void)
+{
+    // 申请 4 个字：填充 + 序言块头 + 序言块尾 + 结尾块头
+    if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1)
+        return -1;
+
+    PUT(heap_listp, 0);                             // 对齐填充
+    PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1));    // 序言块 header
+    PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1));    // 序言块 footer
+    PUT(heap_listp + (3*WSIZE), PACK(0, 1));        // 结尾块 header
+    heap_listp += (2*WSIZE);                        // 指向序言块的 payload
+
+    // 扩展一段空闲堆
+    if (extend_heap(CHUNKSIZE/WSIZE) == NULL)
+        return -1;
+    return 0;
+}
+```
+
+首先来写一些辅助函数`coalesce`，`extend_heap`，`place`，`find_fit`和`best_fit`。
+
+```c
+// 合并相邻空闲块
+void *coalesce(void *bp)
+{
+    size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
+    size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp)));
+    size_t size = GET_SIZE(HDRP(bp));
+
+    if(prev_alloc && next_alloc){               // 情况1, 前后都分配
+        return bp;
+    }
+    else if(prev_alloc && !next_alloc){         // 情况2, 后面空闲
+        size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
+        PUT(HDRP(bp), PACK(size, 0));
+        PUT(FTRP(bp), PACK(size, 0));
+    }
+    else if(!prev_alloc && next_alloc){         // 情况3, 前面空闲
+        size += GET_SIZE(HDRP(PREV_BLKP(bp)));
+        PUT(FTRP(bp), PACK(size, 0));
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
+        bp = PREV_BLKP(bp);
+    }
+    else{                                       // 情况4, 前后都空闲
+        size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp)));
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
+        PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
+        bp = PREV_BLKP(bp);
+    }
+    return bp;
+}
+
+/*
+ * 扩展heap, 传入的是字节数
+*/
+void *extend_heap(size_t words)
+{
+    /* bp总是指向有效载荷 */
+    char *bp;
+    size_t size;
+    /* 根据传入字节数奇偶, 考虑对齐 */
+    size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
+
+    /* 分配 */
+    if((long)(bp = mem_sbrk(size)) == -1)
+        return NULL;
+
+    /* 设置头部和脚部 */
+    PUT(HDRP(bp), PACK(size, 0));           /* 空闲块头 */
+    PUT(FTRP(bp), PACK(size, 0));           /* 空闲块脚 */
+    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));   /* 片的新结尾块 */
+
+    /* 判断相邻块是否是空闲块, 进行合并 */
+    return coalesce(bp);
+}
+
+void place(void *bp, size_t asize)
+{
+    size_t csize = GET_SIZE(HDRP(bp));
+
+    if((csize - asize) >= (2*DSIZE)){
+        PUT(HDRP(bp), PACK(asize, 1));
+        PUT(FTRP(bp), PACK(asize, 1));
+        bp = NEXT_BLKP(bp);
+        PUT(HDRP(bp), PACK(csize - asize, 0));
+        PUT(FTRP(bp), PACK(csize - asize, 0));
+    }
+    else{
+        PUT(HDRP(bp), PACK(csize, 1));
+        PUT(FTRP(bp), PACK(csize, 1));
+    }
+}
+
+void *find_fit(size_t asize)
+{
+    void *bp;
+
+    for(bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)){
+        if(!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))){
+            return bp;
+        }
+    }
+    return NULL;
+}
+
+void *best_fit(size_t asize){
+    void *bp;
+    void *best_bp = NULL;
+    size_t min_size = 0;
+
+    for(bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)){
+        if(!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))){
+            size_t curr_size = GET_SIZE(HDRP(bp));
+            if(min_size == 0 || (curr_size < min_size)){
+                min_size = curr_size;
+                best_bp = bp;
+            }
+        }
+    }
+    return best_bp;
+}
+```
+
+然后重构`mm_malloc`函数，使用最佳适配算法。
+
+```c
+/* 
+ * mm_malloc - Allocate a block by incrementing the brk pointer.
+ *     Always allocate a block whose size is a multiple of the alignment.
+ */
+void *mm_malloc(size_t size)
+{
+    size_t asize;       // 调整后的块大小
+    size_t extendsize;  // 如果没有合适的块, 扩展堆的大小
+    char *bp;
+
+    // 忽略无效请求
+    if(size == 0){
+        return NULL;
+    }
+
+    // 调整块大小, 考虑对齐和头尾部开销
+    if(size <= DSIZE){
+        asize = 2*DSIZE;
+    }
+    else{
+        asize = ALIGN(size + DSIZE);
+    }
+
+    // 寻找合适的空闲块
+    if((bp = best_fit(asize)) != NULL){
+        place(bp, asize);
+        return bp;
+    }
+
+    // 没有合适的块, 扩展堆
+    extendsize = MAX(asize, CHUNKSIZE);
+    if((bp = extend_heap(extendsize/WSIZE)) == NULL){
+        return NULL;
+    }
+    place(bp, asize);
+    return bp;
+}
+```
+
+然后是`mm_free`函数与`mm_init`函数。
+
+```c
+/* 
+ * mm_init - initialize the malloc package.
+ */
+int mm_init(void)
+{
+    if((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1){
+        return -1;
+    }
+
+    PUT(heap_listp, 0);                             // 对齐填充
+    PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1));    // prologue header
+    PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1));    // prologue footer
+    PUT(heap_listp + (3*WSIZE), PACK(0, 1));        // epilogue header
+    heap_listp += (2*WSIZE);                        // 指向第一个块的有效载荷
+
+    // 扩展一段空闲堆
+    if(extend_heap(CHUNKSIZE/WSIZE) == NULL){
+        return -1;
+    }
+
+    return 0;
+}
+
+void mm_free(void *ptr)
+{
+    if(ptr == NULL)
+        return;
+
+    size_t size = GET_SIZE(HDRP(ptr));
+
+    PUT(HDRP(ptr), PACK(size, 0));
+    PUT(FTRP(ptr), PACK(size, 0));
+    coalesce(ptr);
+}
+
+/*
+ * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
+ */
+void *mm_realloc(void *ptr, size_t size)
+{
+    if(size == 0){
+        mm_free(ptr);
+        return NULL;
+    }
+
+    if(ptr == NULL){
+        return mm_malloc(size);
+    }
+
+    void *newptr = mm_malloc(size);
+    if(newptr == NULL){
+        return NULL;
+    }
+
+    size_t copySize = GET_SIZE(HDRP(ptr)) - DSIZE;
+    if(size < copySize){
+        copySize = size;
+    }
+    memcpy(newptr, ptr, copySize);
+    mm_free(ptr);
+    return newptr;
+}
+
+```
+
+这里的`mm_free`函数比较简单，只需要将块标记为空闲并尝试合并。
+
+### 测试结果可见
+
+```sh
+(base) ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Malloc-Lab$ ./mdriver -t traces/ -V
+Team Name:ateam
+Member 1 :Sun Gang:sungang@stu.xmu.edu.cn
+Using default tracefiles in traces/
+Measuring performance with gettimeofday().
+
+Testing mm malloc
+Reading tracefile: amptjp-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: cccp-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: cp-decl-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: expr-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: coalescing-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: random-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: random2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: binary-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: binary2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: realloc-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: realloc2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   99%    5694  0.008355   682
+ 1       yes   99%    5848  0.007686   761
+ 2       yes   99%    6648  0.012992   512
+ 3       yes  100%    5380  0.009526   565
+ 4       yes   66%   14400  0.000115125326
+ 5       yes   92%    4800  0.008235   583
+ 6       yes   92%    4800  0.007503   640
+ 7       yes   55%   12000  0.095922   125
+ 8       yes   51%   24000  0.320250    75
+ 9       yes   27%   14401  0.074907   192
+10       yes   34%   14401  0.002641  5453
+Total          74%  112372  0.548131   205
+
+Perf index = 44 (util) + 14 (thru) = 58/100
+```
+
+```sh
+(base) ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Malloc-Lab$ ./mdriver -t traces/ -V
+Team Name:ateam
+Member 1 :Sun Gang:sungang@stu.xmu.edu.cn
+Using default tracefiles in traces/
+Measuring performance with gettimeofday().
+
+Testing mm malloc
+Reading tracefile: amptjp-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: cccp-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: cp-decl-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: expr-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: coalescing-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: random-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: random2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: binary-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: binary2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: realloc-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: realloc2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   99%    5694  0.009309   612
+ 1       yes   99%    5848  0.008731   670
+ 2       yes   99%    6648  0.014572   456
+ 3       yes  100%    5380  0.010524   511
+ 4       yes   66%   14400  0.000123116599
+ 5       yes   96%    4800  0.016845   285
+ 6       yes   95%    4800  0.015909   302
+ 7       yes   55%   12000  0.097286   123
+ 8       yes   51%   24000  0.340311    71
+ 9       yes   31%   14401  0.075668   190
+10       yes   30%   14401  0.002812  5121
+Total          75%  112372  0.592091   190
+
+Perf index = 45 (util) + 13 (thru) = 58/100
+```
+
+可见Implicit Free List的实现效果还是不错的,但是只有58分
+
+## Explicit Free List
+
+直接show code吧，这个courcse中已经写的相当详细了，具体的代码这里掠过
+
+```c
 /* single word (4) or double word (8) alignment */
 #define ALIGNMENT 8
 #define WSIZE 4
@@ -553,3 +1038,60 @@ void *mm_realloc(void *ptr, size_t size)
         }
     }
 }
+```
+
+#### 运行结果
+
+```sh
+(base) ubuntu@VM-0-8-ubuntu:~/learnning_project/CMU-15213/src/Malloc-Lab$ ./mdriver -t traces/ -V
+Team Name:ateam
+Member 1 :Sun Gang:sungang@stu.xmu.edu.cn
+Using default tracefiles in traces/
+Measuring performance with gettimeofday().
+
+Testing mm malloc
+Reading tracefile: amptjp-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: cccp-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: cp-decl-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: expr-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: coalescing-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: random-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: random2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: binary-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: binary2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: realloc-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+Reading tracefile: realloc2-bal.rep
+Checking mm_malloc for correctness, efficiency, and performance.
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   99%    5694  0.000171 33376
+ 1       yes   99%    5848  0.000202 28936
+ 2       yes   99%    6648  0.000251 26465
+ 3       yes   99%    5380  0.000178 30174
+ 4       yes   66%   14400  0.000199 72508
+ 5       yes   96%    4800  0.001567  3063
+ 6       yes   95%    4800  0.001525  3148
+ 7       yes   55%   12000  0.000197 61007
+ 8       yes   51%   24000  0.000344 69707
+ 9       yes   31%   14401  0.075686   190
+10       yes   30%   14401  0.001858  7750
+Total          75%  112372  0.082178  1367
+
+Perf index = 45 (util) + 40 (thru) = 85/100
+```
+
+## REF
+
+1. [(48 封私信 / 84 条消息) CSAPP | Lab8-Malloc Lab 深入解析 - 知乎](https://zhuanlan.zhihu.com/p/496366818)
+2. [CSAPP Malloc Lab - 次林梦叶 - 博客园](https://www.cnblogs.com/cilinmengye/p/18093810)
