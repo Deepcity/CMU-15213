@@ -12,7 +12,8 @@
 2. [bomb](./bomblog.md)
 3. [attack](./attacklog.md)
 4. [architecture](./architecturelog.md)
-5. [cache](./cachelab.md)
+5. [cache](./cachelog.md)
 6. [shell](./shelllab.md)
+7. [malloc](./malloclog.md)
 
 ## REF

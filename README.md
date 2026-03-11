@@ -28,6 +28,7 @@
 - **Data Lab**：位操作编程
 - **Bomb Lab**：逆向工程拆解“二进制炸弹”
 - **Attack Lab**：理解缓冲区溢出攻击与防御
+- **Architecture Lab**：实现 Y86-64 流水线处理器
 - **Cache Lab**：缓存性能优化
 - **Shell Lab**：实现一个简易Unix shell
 - **Malloc Lab**：实现动态内存分配器
@@ -38,14 +39,16 @@
 
 ### Lab Table
 
-| LabName        | StartTime  | EndTime    |
-| -------------- | ---------- | ---------- |
-| **Data Lab**   | 2025-07-31 | 2025-08-04 |
-| **Bomb Lab**   | 2025-08-06 | 2025-08-10 |
-| **Attack Lab** | 2025-08-13 |            |
-| **Shell Lab**  |            |            |
-| **Malloc Lab** |            |            |
-| **Proxy Lab**  |            |            |
+| LabName             | StartTime  | EndTime    |
+| ------------------- | ---------- | ---------- |
+| **Data Lab**        | 2025-07-31 | 2025-08-04 |
+| **Bomb Lab**        | 2025-08-06 | 2025-08-10 |
+| **Attack Lab**      | 2025-08-13 | 2025-08-17 |
+| **Architecture Lab**| 2025-08-18 | 2025-08-24 |
+| **Cache Lab**       | 2025-09-01 | 2025-09-07 |
+| **Shell Lab**       | 2025-09-08 | 2025-09-14 |
+| **Malloc Lab**      | 2025-09-15 | 2025-09-28 |
+| **Proxy Lab**       |            |            |
 
 ## Project Structure
 
@@ -58,19 +61,25 @@ CMU-15213
 │       └── lab-note
 ├── README.md
 ├── resources
-│   ├── Attack-Lab
-│   ├── Bomb-Lab
+│   ├── architecture_lab
+│   ├── attack_lab
 │   ├── books
+│   ├── cache_lab
 │   ├── code-all.tar
 │   ├── courses
 │   │   └── 2015fall
-│   │       ├── ppt
-│   │       └── README.md
-│   └── Data-Lab
+│   ├── malloc_lab
+│   ├── papers
+│   └── shell_lab
 └── src
+    ├── Architecture-Lab
     ├── Attack-Lab
     ├── Bomb-Lab
-    └── Datalab-Lab
+    ├── Buffer-Lab
+    ├── Cache-Lab
+    ├── Datalab-Lab
+    ├── Malloc-Lab
+    └── Shell-Lab
 ```
 
 ## REF
